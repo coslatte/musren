@@ -45,7 +45,6 @@ class AlbumArtManager:
                 )
 
                 # Buscar el álbum en MusicBrainz
-                print(f"Buscando información para: {artist} - {album}")
                 result = musicbrainzngs.search_releases(
                     release=album, artist=artist, limit=1
                 )
@@ -65,36 +64,27 @@ class AlbumArtManager:
                         try:
                             import requests
                         except ImportError:
-                            print("requests no está instalado; no se puede verificar Cover Art Archive")
                             raise
 
                         cover_response = requests.head(cover_url, timeout=5)
                         if cover_response.status_code == 200:
                             return cover_url
-                        else:
-                            print(
-                                f"Portada no encontrada en Cover Art Archive (código {cover_response.status_code}). Intentando servicios alternativos..."
-                            )
-                    except Exception as e:
-                        print(
-                            f"Error al verificar portada en Cover Art Archive: {str(e)}. Intentando servicios alternativos..."
-                        )
+                    except Exception:
+                        pass
 
                     # No volvemos aquí - seguimos con los otros métodos
             except ImportError:
-                print("MusicBrainz no disponible, intentando alternativas...")
-            except Exception as e:
-                print(f"Error al buscar en MusicBrainz: {str(e)}")
+                pass
+            except Exception:
+                pass
 
             # Método con iTunes
-            print("Intentando con iTunes...")
             search_term = f"{artist} {album}".replace(" ", "+")
             url = f"https://itunes.apple.com/search?term={search_term}&entity=album&limit=1"
 
             try:
                 import requests
             except ImportError:
-                print("requests no está instalado; no se puede buscar en iTunes")
                 response = None
             else:
                 response = requests.get(url)
@@ -109,14 +99,12 @@ class AlbumArtManager:
                     return cover_url
 
             # Método con Deezer
-            print("No se encontró en iTunes, intentando con Deezer...")
             search_term = f"{artist} {album}".replace(" ", "+")
             url = f"https://api.deezer.com/search/album?q={search_term}&limit=1"
 
             try:
                 import requests
             except ImportError:
-                print("requests no está instalado; no se puede buscar en Deezer")
                 return None
             response = requests.get(url)
             if response and response.status_code == 200:
@@ -132,8 +120,7 @@ class AlbumArtManager:
 
             return None
 
-        except Exception as e:
-            print(f"Error al buscar portada: {str(e)}")
+        except Exception:
             return None
 
     def fetch_cover_image(self, url):
@@ -148,26 +135,16 @@ class AlbumArtManager:
         """
 
         try:
-            print(f"Descargando portada desde: {url}")
             try:
                 import requests
             except ImportError:
-                print("requests no está instalado; no se puede descargar la portada")
                 return None
             response = requests.get(url)
             if response.status_code == 200:
                 content_length = len(response.content)
-                print(f"Portada descargada. Tamaño: {content_length} bytes")
-                if content_length < 100:
-                    print(
-                        "ADVERTENCIA: La imagen descargada es muy pequeña, podría no ser válida"
-                    )
                 return response.content
-            else:
-                print(f"Error al descargar portada. Código: {response.status_code}")
             return None
-        except Exception as e:
-            print(f"Error al descargar portada: {str(e)}")
+        except Exception:
             return None
 
     def embed_album_art(self, file_path, image_data):
@@ -187,14 +164,10 @@ class AlbumArtManager:
         """
 
         if not image_data:
-            print("No hay datos de imagen para incrustar")
             return False
 
         try:
             file_ext = os.path.splitext(file_path)[1].lower()
-            print(
-                f"Incrustando portada en {os.path.basename(file_path)} (formato: {file_ext})"
-            )
 
             if file_ext == ".mp3":
                 return self._embed_mp3_art(file_path, image_data)
@@ -203,11 +176,9 @@ class AlbumArtManager:
             elif file_ext == ".m4a":
                 return self._embed_m4a_art(file_path, image_data)
             else:
-                print(f"Formato de archivo no soportado para portadas: {file_ext}")
                 return False
 
-        except Exception as e:
-            print(f"Error general al incrustar portada: {str(e)}")
+        except Exception:
             return False
 
     def _embed_mp3_art(self, file_path, image_data):
@@ -226,17 +197,18 @@ class AlbumArtManager:
             original_tags = {}
             try:
                 from mutagen.id3 import ID3
+
                 existing_tags = ID3(file_path)
-                print("Leyendo metadatos existentes para preservarlos")
                 # Guardar todos los frames excepto APIC
                 for frame_key in existing_tags.keys():
                     if not frame_key.startswith("APIC"):
                         original_tags[frame_key] = existing_tags[frame_key]
-            except Exception as e:
-                print(f"No hay etiquetas previas que preservar: {str(e)}")
+            except Exception:
+                pass
 
             # Crear nuevas etiquetas
             from mutagen.id3 import ID3, APIC
+
             tags = ID3()
 
             # Restaurar etiquetas originales
@@ -258,12 +230,11 @@ class AlbumArtManager:
             )
 
             # Guardar archivo
-            tags.save(file_path)
-            print(f"Portada incrustada correctamente (formato: {mime_type})")
+            # Usar v2_version=3 para mayor compatibilidad con Windows
+            tags.save(file_path, v2_version=3)
             return True
 
-        except Exception as e:
-            print(f"Error al incrustar portada MP3: {str(e)}")
+        except Exception:
             return False
 
     def _embed_flac_art(self, file_path, image_data):
@@ -279,11 +250,10 @@ class AlbumArtManager:
         """
         try:
             from mutagen.flac import FLAC, Picture
+
             audio = FLAC(file_path)
 
             # Eliminar imágenes existentes
-            existing_pics = len(audio.pictures)
-            print(f"Eliminando {existing_pics} imágenes existentes en FLAC")
             audio.clear_pictures()
 
             # Agregar nueva imagen
@@ -298,14 +268,11 @@ class AlbumArtManager:
 
             picture.desc = "Cover"
             picture.data = image_data
-            print(f"Portada agregada como {picture.mime}")
 
             audio.add_picture(picture)
             audio.save()
-            print("Archivo FLAC guardado con portada")
             return True
-        except Exception as e:
-            print(f"Error en portada FLAC: {str(e)}")
+        except Exception:
             return False
 
     def _embed_m4a_art(self, file_path, image_data):
@@ -321,11 +288,11 @@ class AlbumArtManager:
         """
         try:
             from mutagen.mp4 import MP4, MP4Cover
+
             audio = MP4(file_path)
 
             # Eliminar portadas existentes
             if "covr" in audio:
-                print("Eliminando portada existente en M4A")
                 del audio["covr"]
 
             # Agregar nueva portada - detectar formato
@@ -334,17 +301,12 @@ class AlbumArtManager:
                 format_type = MP4Cover.FORMAT_JPEG  # Por defecto
                 if image_data[:8].startswith(b"\x89PNG\r\n\x1a\n"):
                     format_type = MP4Cover.FORMAT_PNG
-                    print("Detectado formato PNG")
-                else:
-                    print("Detectado formato JPEG")
 
                 cover = MP4Cover(image_data, format_type)
                 audio["covr"] = [cover]
                 audio.save()
-                print("Archivo M4A guardado con portada")
                 return True
-            except Exception as e:
-                print(f"Error al guardar portada M4A: {str(e)}")
+            except Exception:
                 # Intentar con el otro formato como último recurso
                 try:
                     alt_format = (
@@ -352,15 +314,11 @@ class AlbumArtManager:
                         if format_type == MP4Cover.FORMAT_JPEG
                         else MP4Cover.FORMAT_JPEG
                     )
-                    print(f"Intentando con formato alternativo: {alt_format}")
                     cover = MP4Cover(image_data, alt_format)
                     audio["covr"] = [cover]
                     audio.save()
-                    print("Archivo M4A guardado con formato alternativo")
                     return True
-                except Exception as e2:
-                    print(f"Error al guardar con formato alternativo: {str(e2)}")
+                except Exception:
                     return False
-        except Exception as e:
-            print(f"Error general en portada M4A: {str(e)}")
+        except Exception:
             return False
