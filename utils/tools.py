@@ -25,7 +25,7 @@ def get_audio_files(directory, recursive=False):
                     files.append(os.path.join(root, f))
     else:
         for f in os.listdir(directory):
-            if f.lower().endswith(audio_extensions):
-                files.append(os.path.join(directory, f))
-
+            filepath = os.path.join(directory, f)
+            if os.path.isfile(filepath) and f.lower().endswith(audio_extensions):
+                files.append(filepath)
     return files

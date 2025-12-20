@@ -21,7 +21,7 @@ class AudioProcessor:
     def __init__(
         self,
         directory=".",
-        acoustid_api_key="8XaBELgH",
+        acoustid_api_key=None,
         max_workers=4,
         recursive=False,
         use_shazam=False,
@@ -39,7 +39,7 @@ class AudioProcessor:
 
         self.directory = os.path.abspath(directory)
         # Si se pasa None, usar la clave por defecto
-        self.acoustid_api_key = acoustid_api_key if acoustid_api_key else "8XaBELgH"
+        self.acoustid_api_key = acoustid_api_key or os.environ.get("ACOUSTID_API_KEY")
         self.max_workers = max_workers
         self.recursive = recursive
         self.os_type = platform.system()
@@ -245,8 +245,8 @@ class AudioProcessor:
                         if cover_url:
                             metadata_to_update["cover_url"] = cover_url
                             should_update_metadata = True
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        result["cover_error"] = str(e)
 
         # Actualizar metadatos completos del archivo si es necesario
         if should_update_metadata:
@@ -784,8 +784,8 @@ class AudioProcessor:
 
             if file_ext == ".mp3":
                 # Para archivos MP3 usar ID3
-                from mutagen.id3 import (  # type: ignore[attr-defined]
-                    ID3,
+                from mutagen.id3 import ID3
+                from mutagen.id3._frames import (
                     TIT2,
                     TPE1,
                     TALB,
@@ -838,12 +838,9 @@ class AudioProcessor:
                     update_tag("TCOM", TCOM, metadata["composer"])
 
                 if changed:
-                    # Usar v2_version=3 para mayor compatibilidad con Windows
                     tags.save(file_path, v2_version=3)
 
-                # Si hay URL de portada, descargar e incrustar
                 if "cover_url" in metadata:
-                    # Importar el gestor de portadas
                     from core.artwork import AlbumArtManager
 
                     art_manager = AlbumArtManager()
@@ -855,7 +852,6 @@ class AudioProcessor:
                 return True, ""
 
             elif file_ext in [".flac", ".ogg"]:
-                # Para archivos FLAC y OGG
                 try:
                     from mutagen import File  # type: ignore[attr-defined]
                 except ImportError:
@@ -893,9 +889,7 @@ class AudioProcessor:
                 if changed:
                     audio.save()
 
-                # Si hay URL de portada, descargar e incrustar (solo para FLAC)
                 if "cover_url" in metadata and file_ext == ".flac":
-                    # Importar el gestor de portadas
                     from core.artwork import AlbumArtManager
 
                     art_manager = AlbumArtManager()
@@ -915,7 +909,6 @@ class AudioProcessor:
 
                 audio = MP4(file_path)
 
-                # Mapeo de campos para M4A
                 field_mapping = {
                     "title": "\xa9nam",
                     "artist": "\xa9ART",
@@ -936,7 +929,6 @@ class AudioProcessor:
                             audio[file_key] = [new_val]
                             changed = True
 
-                # Manejo especial para tracknumber y discnumber en M4A
                 if "tracknumber" in metadata:
                     try:
                         trkn = int(metadata["tracknumber"])
@@ -958,9 +950,7 @@ class AudioProcessor:
                 if changed:
                     audio.save()
 
-                # Si hay URL de portada, descargar e incrustar
                 if "cover_url" in metadata:
-                    # Importar el gestor de portadas
                     from core.artwork import AlbumArtManager
 
                     art_manager = AlbumArtManager()
@@ -1007,7 +997,6 @@ class AudioProcessor:
 
                 audio = File(file_path, easy=True)
 
-                # Verificar si existen los metadatos necesarios
                 if not audio or not audio.tags:
                     if progress_callback:
                         progress_callback(
@@ -1019,7 +1008,6 @@ class AudioProcessor:
                 artist = audio.get("artist", [""])[0]
                 title = audio.get("title", [""])[0]
 
-                # Verificar si los metadatos están vacíos o son los valores por defecto
                 if (
                     not artist
                     or not title
@@ -1037,7 +1025,6 @@ class AudioProcessor:
                         )
                     continue
 
-                # Artista - Título.formato (.mp3, .flac, etc..)
                 new_name = f"{artist} - {title}{os.path.splitext(file)[1]}"
 
                 actual_new_path, changed = self._safe_rename(file, new_name)
@@ -1068,8 +1055,6 @@ class AudioProcessor:
                     progress_callback(file, {"status": False, "error": str(e)})
                 pass
 
-        # La CLI mostrará el resumen de renombrados
-
         return changes
 
     def undo_rename(self, changes: dict, progress_callback=None):
@@ -1077,9 +1062,6 @@ class AudioProcessor:
         for new_path, old_path in changes.items():
             try:
                 if os.path.exists(new_path):
-                    # Intentar renombrar de vuelta
-                    # Usamos os.rename directamente para restaurar el estado exacto
-                    # Pero verificamos si el destino (old_path) existe para evitar sobrescritura accidental
                     if not os.path.exists(old_path):
                         os.rename(new_path, old_path)
                         if progress_callback:
@@ -1123,19 +1105,16 @@ class AudioProcessor:
         new_name = self._sanitize_filename(new_name)
         new_path = os.path.join(directory, new_name)
 
-        # Verificar si el nombre ya es el correcto (ignorando mayúsculas/minúsculas en Windows)
         if os.path.normcase(old_path) == os.path.normcase(new_path):
             return new_path, False
 
-        # Verificar si el archivo destino ya existe y es idéntico (duplicado)
         if os.path.exists(new_path) and os.path.normcase(new_path) != os.path.normcase(
             old_path
         ):
             if self._are_files_identical(old_path, new_path):
                 try:
-                    # Eliminar el archivo destino (que es idéntico) y renombrar el actual
-                    os.remove(new_path)
-                    os.rename(old_path, new_path)
+                    os.remove(old_path)
+
                     return new_path, True
                 except OSError:
                     pass
@@ -1144,7 +1123,6 @@ class AudioProcessor:
         counter = 1
 
         while os.path.exists(new_path):
-            # Si el archivo que existe es el mismo que estamos renombrando (caso raro de case-sensitivity)
             if os.path.normcase(new_path) == os.path.normcase(old_path):
                 break
 
@@ -1152,7 +1130,6 @@ class AudioProcessor:
             new_path = os.path.join(directory, new_name)
             counter += 1
 
-        # Verificar si después de resolver conflictos terminamos con el mismo archivo
         if os.path.normcase(new_path) == os.path.normcase(old_path):
             return new_path, False
 

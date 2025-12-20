@@ -22,7 +22,7 @@ class ShazamProcessor:
         for attempt in range(max_retries):
             try:
                 if Shazam is None:
-                    return {"error": "Shazam not available"}
+                    return {"error": "Shazam library not available"}
                 shazam = Shazam()
                 timeout = 20.0 + (attempt * 10.0)
                 out = await asyncio.wait_for(
@@ -34,11 +34,15 @@ class ShazamProcessor:
                     return {"error": "timeout"}
                 await asyncio.sleep(1 * (attempt + 1))
             except Exception as e:
-                if "429" in str(e):
-                    await asyncio.sleep(5)
-                else:
-                    return {}
-        return {}
+                error_str = str(e)
+                if "429" in error_str or "rate limit" in error_str.lower():
+                    if attempt == max_retries - 1:
+                        return {"error": "rate_limit_exceeded"}
+                    await asyncio.sleep(5 * (attempt + 1))
+                    continue
+
+                return {"error": f"recognition_failed: {error_str}"}
+        return {"error": "max_retries_exceeded"}
 
     def recognize(self, file_path: str) -> Dict[str, Any]:
         """
@@ -73,7 +77,9 @@ class ShazamProcessor:
         }
 
         if "genres" in track:
-            metadata["genres"] = [track["genres"]["primary"]]
+            genres = track["genres"]
+            if "primary" in genres:
+                metadata["genres"] = [genres["primary"]]
 
         if "sections" in track:
             for section in track["sections"]:

@@ -2,9 +2,12 @@
 Módulo para manejar portadas de álbumes: búsqueda, descarga e incrustación.
 """
 
+import logging
 import os
 
 from constants.info import MUSIC_RENAMER_VERSION
+
+logger = logging.getLogger(__name__)
 
 
 class AlbumArtManager:
@@ -72,7 +75,6 @@ class AlbumArtManager:
                     except Exception:
                         pass
 
-                    # No volvemos aquí - seguimos con los otros métodos
             except ImportError:
                 pass
             except Exception:
@@ -92,7 +94,7 @@ class AlbumArtManager:
                 data = response.json()
                 if data.get("resultCount", 0) > 0:
                     result = data["results"][0]
-                    # Obtener la URL de la imagen y reemplazar el tamaño para obtener mejor calidad
+
                     cover_url = result.get("artworkUrl100", "").replace(
                         "100x100", "600x600"
                     )
@@ -274,50 +276,100 @@ class AlbumArtManager:
         except Exception:
             return False
 
-    def _embed_m4a_art(self, file_path, image_data):
+    def _embed_m4a_art(self, file_path: str, image_data: bytes) -> bool:
         """
         Incrusta portada en archivo M4A/AAC.
 
         Args:
-            file_path (str): Ruta al archivo M4A
-            image_data (bytes): Datos de la imagen
+            file_path: Ruta al archivo M4A
+            image_data: Datos de la imagen
 
         Returns:
-            bool: True si tuvo éxito
+            True si tuvo éxito, False en caso contrario
         """
         try:
-            from mutagen.mp4 import MP4, MP4Cover
+            from mutagen.mp4 import MP4, MP4Cover, MP4StreamInfoError
+            from mutagen._util import MutagenError  # type: ignore[attr-defined]
+        except ImportError as e:
+            logger.error("mutagen.mp4 no disponible: %s", e)
+            return False
 
+        # Detect image format from magic bytes
+        format_type: int = MP4Cover.FORMAT_JPEG
+        if image_data[:8].startswith(b"\x89PNG\r\n\x1a\n"):
+            format_type = MP4Cover.FORMAT_PNG
+            logger.debug("Detected PNG image for %s", file_path)
+        else:
+            logger.debug("Assuming JPEG image for %s", file_path)
+
+        try:
             audio = MP4(file_path)
+        except MP4StreamInfoError as e:
+            logger.error("Archivo M4A corrupto o no válido %s: %s", file_path, e)
+            return False
+        except (OSError, PermissionError) as e:
+            logger.error("No se pudo abrir %s: %s", file_path, e)
+            raise  # permission/IO issues should propagate
+        except MutagenError as e:
+            logger.error("Error leyendo M4A %s: %s", file_path, e)
+            return False
 
-            # Eliminar portadas existentes
-            if "covr" in audio:
-                del audio["covr"]
+        # Remove existing covers
+        if "covr" in audio:
+            del audio["covr"]
 
-            # Agregar nueva portada - detectar formato
-            format_type: int = MP4Cover.FORMAT_JPEG  # Por defecto
-            try:
-                # Determinar formato
-                if image_data[:8].startswith(b"\x89PNG\r\n\x1a\n"):
-                    format_type = MP4Cover.FORMAT_PNG
+        # Try embedding with detected format first
+        try:
+            cover = MP4Cover(image_data, format_type)
+            audio["covr"] = [cover]
+            audio.save()
+            logger.info(
+                "Portada incrustada en %s con formato %s",
+                file_path,
+                "PNG" if format_type == MP4Cover.FORMAT_PNG else "JPEG",
+            )
+            return True
+        except (OSError, PermissionError) as e:
+            # File system / permission errors should not be swallowed
+            logger.error(
+                "Error de permisos/IO al guardar portada en %s: %s", file_path, e
+            )
+            raise
+        except MutagenError as e:
+            logger.debug(
+                "Falló incrustar con formato %s en %s: %s. Intentando formato alternativo.",
+                "PNG" if format_type == MP4Cover.FORMAT_PNG else "JPEG",
+                file_path,
+                e,
+            )
 
-                cover = MP4Cover(image_data, format_type)
-                audio["covr"] = [cover]
-                audio.save()
-                return True
-            except Exception:
-                # Intentar con el otro formato como último recurso
-                try:
-                    alt_format = (
-                        MP4Cover.FORMAT_PNG
-                        if format_type == MP4Cover.FORMAT_JPEG
-                        else MP4Cover.FORMAT_JPEG
-                    )
-                    cover = MP4Cover(image_data, alt_format)
-                    audio["covr"] = [cover]
-                    audio.save()
-                    return True
-                except Exception:
-                    return False
-        except Exception:
+        # Fallback: try the alternate format
+        alt_format = (
+            MP4Cover.FORMAT_PNG
+            if format_type == MP4Cover.FORMAT_JPEG
+            else MP4Cover.FORMAT_JPEG
+        )
+        try:
+            cover = MP4Cover(image_data, alt_format)
+            audio["covr"] = [cover]
+            audio.save()
+            logger.info(
+                "Portada incrustada en %s con formato alternativo %s",
+                file_path,
+                "PNG" if alt_format == MP4Cover.FORMAT_PNG else "JPEG",
+            )
+            return True
+        except (OSError, PermissionError) as e:
+            logger.error(
+                "Error de permisos/IO al guardar portada alternativa en %s: %s",
+                file_path,
+                e,
+            )
+            raise
+        except MutagenError as e:
+            logger.error(
+                "No se pudo incrustar portada en %s tras intentar ambos formatos: %s",
+                file_path,
+                e,
+            )
             return False

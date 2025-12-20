@@ -6,7 +6,6 @@ def main() -> None:
     """
     import warnings
 
-    # Suprimir advertencias de sintaxis de pydub (común en Python 3.12+)
     warnings.filterwarnings("ignore", category=SyntaxWarning, module="pydub")
 
     from core.cli_typer import app as typer_app

@@ -97,7 +97,7 @@ def main(
 
     processor = AudioProcessor(
         directory=str(directory),
-        acoustid_api_key=str(api_key) if api_key else "8XaBELgH",
+        acoustid_api_key=str(api_key) if api_key else os.getenv("ACOUSTID_API_KEY"),
         recursive=recursive,
         use_shazam=shazam,
     )
