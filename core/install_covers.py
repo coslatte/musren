@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
-Script para añadir portadas a archivos de música existentes.
-Usa las clases de la biblioteca encapsulada music_renamer.
+Script to add album covers to existing music files.
+Uses the encapsulated music_renamer library classes.
 """
 
 import os
@@ -11,20 +11,20 @@ from utils.tools import get_audio_files
 
 
 def process_file(file_path, art_manager):
-    """Procesa un archivo individual añadiendo portada."""
+    """Processes an individual file by adding album cover."""
     try:
-        # Obtener metadatos actuales
+        # Get current metadata
         try:
             from mutagen import File  # type: ignore[attr-defined]
         except ImportError:
             return {
                 "status": False,
-                "error": "La biblioteca mutagen no está instalada.",
+                "error": "The mutagen library is not installed.",
             }
 
         audio = File(file_path, easy=True)
         if not audio:
-            return {"status": False, "error": "No se pudieron leer los metadatos"}
+            return {"status": False, "error": "Could not read metadata"}
 
         artist = (
             audio.get("artist", ["Unknown Artist"])[0]
@@ -37,7 +37,7 @@ def process_file(file_path, art_manager):
             else "Unknown Album"
         )
 
-        # Verificar si el archivo ya tiene portada
+        # Check if the file already has cover
         has_cover = False
         if file_path.lower().endswith(".mp3"):
             from mutagen.id3 import ID3
@@ -64,51 +64,51 @@ def process_file(file_path, art_manager):
             except Exception:
                 has_cover = False
 
-        # Si ya tiene portada, informar y saltar
+        # If it already has cover, inform and skip
         if has_cover:
             return {
                 "status": True,
-                "message": "El archivo ya tiene portada",
+                "message": "File already has cover",
                 "skipped": True,
             }
 
-        # Buscar portada
+        # Search for cover
         cover_url = art_manager.fetch_album_cover(artist, album)
 
         if not cover_url:
-            return {"status": False, "error": "No se encontró portada"}
+            return {"status": False, "error": "No cover found"}
 
-        # Descargar e incrustar portada
+        # Download and embed cover
         image_data = art_manager.fetch_cover_image(cover_url)
         if not image_data:
-            return {"status": False, "error": "No se pudo descargar la portada"}
+            return {"status": False, "error": "Could not download cover"}
 
         if art_manager.embed_album_art(file_path, image_data):
-            return {"status": True, "message": "Portada incrustada correctamente"}
+            return {"status": True, "message": "Cover embedded successfully"}
         else:
-            return {"status": False, "error": "Error al incrustar la portada"}
+            return {"status": False, "error": "Error embedding cover"}
 
     except Exception as e:
         return {"status": False, "error": str(e)}
 
 
 def run(directory: str, max_workers: int = 4, progress_callback=None) -> dict:
-    """Ejecuta el proceso de instalación de portadas sin usar argparse.
+    """Runs the cover installation process without using argparse.
 
-    Pensado para ser llamado desde otras partes del código (p. ej., Typer CLI)
-    sin conflictos de argumentos.
+    Designed to be called from other parts of the code (e.g., Typer CLI)
+    without argument conflicts.
     """
     directory = os.path.abspath(directory)
 
-    # Obtener archivos de audio
+    # Get audio files
     files = get_audio_files(directory)
     if not files:
         return {"success": 0, "skipped": 0, "failed": 0, "total": 0}
 
-    # Crear gestor de portadas
+    # Create cover manager
     art_manager = AlbumArtManager()
 
-    # Procesar archivos en paralelo
+    # Process files in parallel
     results = {"success": 0, "skipped": 0, "failed": 0, "total": len(files)}
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:

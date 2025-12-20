@@ -4,14 +4,14 @@ from constants.settings import AUDIO_EXTENSIONS
 
 def get_audio_files(directory, recursive=False):
     """
-    Obtiene todos los archivos de audio en el directorio especificado.
+    Gets all audio files in the specified directory.
 
     Args:
-        directory (str): Directorio a buscar
-        recursive (bool): Si buscar en subdirectorios
+        directory (str): Directory to search
+        recursive (bool): Whether to search in subdirectories
 
     Returns:
-        list: Lista de rutas absolutas de archivos de audio
+        list: List of absolute paths to audio files
     """
 
     directory = os.path.abspath(directory)
