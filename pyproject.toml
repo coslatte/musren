@@ -46,3 +46,12 @@ dev = []
 
 [tool.hatch.build.targets.wheel]
 packages = ["core", "utils", "constants"]
+
+[tool.pyright]
+pythonVersion = "3.9"
+typeCheckingMode = "basic"
+reportMissingImports = true
+reportMissingTypeStubs = false
+reportUnusedImport = true
+reportUnusedVariable = true
+reportPrivateImportUsage = false

@@ -12,10 +12,6 @@ from utils.tools import get_audio_files
 
 
 class Cli:
-    args: argparse.Namespace = None
-    processor: AudioProcessor = None
-    parser: argparse.ArgumentParser = None
-
     def __init__(self):
         self.parser = argparse.ArgumentParser(description=PARSER_DESCRIPTION)
         self._init_parser()
@@ -39,14 +35,14 @@ class Cli:
             if lyrics_results:
                 total = len(lyrics_results)
                 recognized = sum(
-                    1 for f, r in lyrics_results.items() if r.get("recognition", False)
+                    1 for _, r in lyrics_results.items() if r.get("recognition", False)
                 )
                 lyrics_found = sum(
-                    1 for f, r in lyrics_results.items() if r.get("lyrics_found", False)
+                    1 for _, r in lyrics_results.items() if r.get("lyrics_found", False)
                 )
                 lyrics_embedded = sum(
                     1
-                    for f, r in lyrics_results.items()
+                    for _, r in lyrics_results.items()
                     if r.get("lyrics_embedded", False)
                 )
 
@@ -63,7 +59,7 @@ class Cli:
             import core.install_covers as install_covers
 
             print("Ejecutando añadir portadas...")
-            install_covers.main()
+            install_covers.run(self.args.directory if self.args else ".")
             return
         except ImportError:
             print("Error al importar el módulo de instalación de portadas.")

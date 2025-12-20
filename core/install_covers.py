@@ -15,7 +15,7 @@ def process_file(file_path, art_manager):
     try:
         # Obtener metadatos actuales
         try:
-            from mutagen import File
+            from mutagen import File  # type: ignore[attr-defined]
         except ImportError:
             return {
                 "status": False,

@@ -96,8 +96,8 @@ def main(
         api_key = os.getenv("ACOUSTID_API_KEY")
 
     processor = AudioProcessor(
-        directory=directory,
-        acoustid_api_key=api_key,
+        directory=str(directory),
+        acoustid_api_key=str(api_key) if api_key else "8XaBELgH",
         recursive=recursive,
         use_shazam=shazam,
     )
@@ -447,13 +447,13 @@ def process_lyrics_and_stats(
 
     stats["total"] = len(lyrics_results)
     stats["recognized"] = sum(
-        1 for f, r in lyrics_results.items() if r.get("recognition", False)
+        1 for _, r in lyrics_results.items() if r.get("recognition", False)
     )
     stats["lyrics_found"] = sum(
-        1 for f, r in lyrics_results.items() if r.get("lyrics_found", False)
+        1 for _, r in lyrics_results.items() if r.get("lyrics_found", False)
     )
     stats["lyrics_embedded"] = sum(
-        1 for f, r in lyrics_results.items() if r.get("lyrics_embedded", False)
+        1 for _, r in lyrics_results.items() if r.get("lyrics_embedded", False)
     )
 
     return stats

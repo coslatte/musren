@@ -141,7 +141,6 @@ class AlbumArtManager:
                 return None
             response = requests.get(url)
             if response.status_code == 200:
-                content_length = len(response.content)
                 return response.content
             return None
         except Exception:
@@ -207,7 +206,7 @@ class AlbumArtManager:
                 pass
 
             # Crear nuevas etiquetas
-            from mutagen.id3 import ID3, APIC
+            from mutagen.id3 import ID3, APIC  # type: ignore[attr-defined]
 
             tags = ID3()
 
@@ -296,9 +295,9 @@ class AlbumArtManager:
                 del audio["covr"]
 
             # Agregar nueva portada - detectar formato
+            format_type: int = MP4Cover.FORMAT_JPEG  # Por defecto
             try:
                 # Determinar formato
-                format_type = MP4Cover.FORMAT_JPEG  # Por defecto
                 if image_data[:8].startswith(b"\x89PNG\r\n\x1a\n"):
                     format_type = MP4Cover.FORMAT_PNG
 

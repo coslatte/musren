@@ -169,7 +169,7 @@ class AudioProcessor:
 
         # Obtener metadatos actuales
         try:
-            from mutagen import File
+            from mutagen import File  # type: ignore[attr-defined]
         except ImportError:
             return {
                 "status": False,
@@ -641,7 +641,7 @@ class AudioProcessor:
                 # Si no se encontraron coincidencias
                 return {
                     "status": False,
-                    "message": f"No se encontraron coincidencias en AcoustID. (Duración: {duration}s, Fingerprint len: {len(fingerprint)}, Response: {results})",
+                    "message": f"No se encontraron coincidencias en AcoustID. (Duración: {duration}s, Fingerprint len: {len(fingerprint) if fingerprint else 0}, Response: {results})",
                 }
 
             except acoustid.WebServiceError as e:
@@ -725,7 +725,7 @@ class AudioProcessor:
             if file_path.lower().endswith(".mp3"):
                 # Para archivos MP3 usar ID3
                 try:
-                    from mutagen.id3 import ID3, USLT
+                    from mutagen.id3 import ID3, USLT  # type: ignore[attr-defined]
                 except ImportError:
                     return False
 
@@ -750,7 +750,7 @@ class AudioProcessor:
             else:
                 # Para otros formatos usar mutagen genérico
                 try:
-                    from mutagen import File
+                    from mutagen import File  # type: ignore[attr-defined]
                 except ImportError:
                     return False
 
@@ -784,20 +784,20 @@ class AudioProcessor:
 
             if file_ext == ".mp3":
                 # Para archivos MP3 usar ID3
-                try:
-                    from mutagen.id3 import (
-                        ID3,
-                        TIT2,
-                        TPE1,
-                        TALB,
-                        TDRC,
-                        TCON,
-                        TRCK,
-                        TPOS,
-                        TPE2,
-                        TCOM,
-                    )
+                from mutagen.id3 import (  # type: ignore[attr-defined]
+                    ID3,
+                    TIT2,
+                    TPE1,
+                    TALB,
+                    TDRC,
+                    TCON,
+                    TRCK,
+                    TPOS,
+                    TPE2,
+                    TCOM,
+                )
 
+                try:
                     tags = ID3(file_path)
                 except Exception:
                     tags = ID3()
@@ -857,11 +857,13 @@ class AudioProcessor:
             elif file_ext in [".flac", ".ogg"]:
                 # Para archivos FLAC y OGG
                 try:
-                    from mutagen import File
+                    from mutagen import File  # type: ignore[attr-defined]
                 except ImportError:
                     return False, "Mutagen no instalado"
 
                 audio = File(file_path)
+                if audio is None:
+                    return False, "No se pudo abrir el archivo de audio"
                 changed = False
 
                 # Mapeo de campos
@@ -928,9 +930,10 @@ class AudioProcessor:
                 for meta_key, file_key in field_mapping.items():
                     if meta_key in metadata:
                         new_val = str(metadata[meta_key])
-                        current_val = audio.get(file_key, [""])[0]
+                        current_val_list = audio.get(file_key, [""])
+                        current_val = current_val_list[0] if current_val_list else ""
                         if current_val != new_val:
-                            audio[file_key] = new_val
+                            audio[file_key] = [new_val]
                             changed = True
 
                 # Manejo especial para tracknumber y discnumber en M4A
@@ -994,7 +997,7 @@ class AudioProcessor:
                 # file is already an absolute path because get_audio_files returns absolute paths
                 file_path = file
                 try:
-                    from mutagen import File
+                    from mutagen import File  # type: ignore[attr-defined]
                 except ImportError:
                     if progress_callback:
                         progress_callback(
