@@ -2,9 +2,12 @@
 Module for handling album artwork: searching, downloading and embedding.
 """
 
+import logging
 import os
 
 from constants.info import MUSIC_RENAMER_VERSION
+
+logger = logging.getLogger(__name__)
 
 
 class AlbumArtManager:
@@ -45,7 +48,7 @@ class AlbumArtManager:
                 )
 
                 # Search for album in MusicBrainz
-                print(f"Searching for info: {artist} - {album}")
+                logger.info(f"Searching for info: {artist} - {album}")
                 result = musicbrainzngs.search_releases(
                     release=album, artist=artist, limit=1
                 )
@@ -61,40 +64,42 @@ class AlbumArtManager:
 
                     # Verify if the cover actually exists before returning it
                     try:
-                        # requests es opcional; importarlo localmente
+                        # requests is optional; import locally
                         try:
                             import requests
                         except ImportError:
-                            print("requests not installed; cannot verify Cover Art Archive")
+                            logger.warning(
+                                "requests not installed; cannot verify Cover Art Archive"
+                            )
                             raise
 
                         cover_response = requests.head(cover_url, timeout=5)
                         if cover_response.status_code == 200:
                             return cover_url
                         else:
-                            print(
+                            logger.info(
                                 f"Cover not found in Cover Art Archive (code {cover_response.status_code}). Trying alternative services..."
                             )
                     except Exception as e:
-                        print(
+                        logger.warning(
                             f"Error verifying cover in Cover Art Archive: {str(e)}. Trying alternative services..."
                         )
 
                     # We don't return here - we continue with other methods
             except ImportError:
-                print("MusicBrainz not available, trying alternatives...")
+                logger.info("MusicBrainz not available, trying alternatives...")
             except Exception as e:
-                print(f"Error searching in MusicBrainz: {str(e)}")
+                logger.warning(f"Error searching in MusicBrainz: {str(e)}")
 
             # Method with iTunes
-            print("Trying with iTunes...")
+            logger.info("Trying with iTunes...")
             search_term = f"{artist} {album}".replace(" ", "+")
             url = f"https://itunes.apple.com/search?term={search_term}&entity=album&limit=1"
 
             try:
                 import requests
             except ImportError:
-                print("requests not installed; cannot search in iTunes")
+                logger.warning("requests not installed; cannot search in iTunes")
                 response = None
             else:
                 response = requests.get(url)
@@ -109,14 +114,14 @@ class AlbumArtManager:
                     return cover_url
 
             # Method with Deezer
-            print("Not found in iTunes, trying with Deezer...")
+            logger.info("Not found in iTunes, trying with Deezer...")
             search_term = f"{artist} {album}".replace(" ", "+")
             url = f"https://api.deezer.com/search/album?q={search_term}&limit=1"
 
             try:
                 import requests
             except ImportError:
-                print("requests not installed; cannot search in Deezer")
+                logger.warning("requests not installed; cannot search in Deezer")
                 return None
             response = requests.get(url)
             if response and response.status_code == 200:
@@ -133,7 +138,7 @@ class AlbumArtManager:
             return None
 
         except Exception as e:
-            print(f"Error searching for cover: {str(e)}")
+            logger.error(f"Error searching for cover: {str(e)}")
             return None
 
     def fetch_cover_image(self, url):
@@ -148,26 +153,26 @@ class AlbumArtManager:
         """
 
         try:
-            print(f"Downloading cover from: {url}")
+            logger.info(f"Downloading cover from: {url}")
             try:
                 import requests
             except ImportError:
-                print("requests not installed; cannot download cover")
+                logger.warning("requests not installed; cannot download cover")
                 return None
             response = requests.get(url)
             if response.status_code == 200:
                 content_length = len(response.content)
-                print(f"Cover downloaded. Size: {content_length} bytes")
+                logger.info(f"Cover downloaded. Size: {content_length} bytes")
                 if content_length < 100:
-                    print(
+                    logger.warning(
                         "WARNING: The downloaded image is very small, it might not be valid"
                     )
                 return response.content
             else:
-                print(f"Error downloading cover. Code: {response.status_code}")
+                logger.error(f"Error downloading cover. Code: {response.status_code}")
             return None
         except Exception as e:
-            print(f"Error downloading cover: {str(e)}")
+            logger.error(f"Error downloading cover: {str(e)}")
             return None
 
     def embed_album_art(self, file_path, image_data):
@@ -187,12 +192,12 @@ class AlbumArtManager:
         """
 
         if not image_data:
-            print("No image data to embed")
+            logger.warning("No image data to embed")
             return False
 
         try:
             file_ext = os.path.splitext(file_path)[1].lower()
-            print(
+            logger.info(
                 f"Embedding cover in {os.path.basename(file_path)} (format: {file_ext})"
             )
 
@@ -203,11 +208,11 @@ class AlbumArtManager:
             elif file_ext == ".m4a":
                 return self._embed_m4a_art(file_path, image_data)
             else:
-                print(f"File format not supported for covers: {file_ext}")
+                logger.warning(f"File format not supported for covers: {file_ext}")
                 return False
 
         except Exception as e:
-            print(f"General error embedding cover: {str(e)}")
+            logger.error(f"General error embedding cover: {str(e)}")
             return False
 
     def _embed_mp3_art(self, file_path, image_data):
@@ -226,17 +231,20 @@ class AlbumArtManager:
             original_tags = {}
             try:
                 from mutagen.id3 import ID3
+
                 existing_tags = ID3(file_path)
-                print("Reading existing metadata to preserve it")
+                logger.debug("Reading existing metadata to preserve it")
                 # Save all frames except APIC
                 for frame_key in existing_tags.keys():
                     if not frame_key.startswith("APIC"):
                         original_tags[frame_key] = existing_tags[frame_key]
             except Exception as e:
-                print(f"No previous tags to preserve: {str(e)}")
+                logger.debug(f"No previous tags to preserve: {str(e)}")
 
             # Create new tags
-            from mutagen.id3 import ID3, APIC
+            from mutagen.id3 import ID3
+            from mutagen.id3._frames import APIC
+
             tags = ID3()
 
             # Restore original tags
@@ -258,12 +266,13 @@ class AlbumArtManager:
             )
 
             # Save file
-            tags.save(file_path)
-            print(f"Cover embedded successfully (format: {mime_type})")
+            # Use v2_version=3 for better Windows compatibility
+            tags.save(file_path, v2_version=3)
+            logger.info(f"Cover embedded successfully (format: {mime_type})")
             return True
 
         except Exception as e:
-            print(f"Error embedding MP3 cover: {str(e)}")
+            logger.error(f"Error embedding MP3 cover: {str(e)}")
             return False
 
     def _embed_flac_art(self, file_path, image_data):
@@ -279,11 +288,12 @@ class AlbumArtManager:
         """
         try:
             from mutagen.flac import FLAC, Picture
+
             audio = FLAC(file_path)
 
             # Remove existing images
             existing_pics = len(audio.pictures)
-            print(f"Removing {existing_pics} existing images in FLAC")
+            logger.debug(f"Removing {existing_pics} existing images in FLAC")
             audio.clear_pictures()
 
             # Add new image
@@ -298,17 +308,17 @@ class AlbumArtManager:
 
             picture.desc = "Cover"
             picture.data = image_data
-            print(f"Cover added as {picture.mime}")
+            logger.debug(f"Cover added as {picture.mime}")
 
             audio.add_picture(picture)
             audio.save()
-            print("FLAC file saved with cover")
+            logger.info("FLAC file saved with cover")
             return True
         except Exception as e:
-            print(f"Error in FLAC cover: {str(e)}")
+            logger.error(f"Error in FLAC cover: {str(e)}")
             return False
 
-    def _embed_m4a_art(self, file_path, image_data):
+    def _embed_m4a_art(self, file_path: str, image_data: bytes) -> bool:
         """
         Embeds cover in M4A/AAC file.
 
@@ -320,47 +330,87 @@ class AlbumArtManager:
             bool: True if successful
         """
         try:
-            from mutagen.mp4 import MP4, MP4Cover
+            from mutagen.mp4 import MP4, MP4Cover, MP4StreamInfoError
+            from mutagen._util import MutagenError  # type: ignore[attr-defined]
+        except ImportError as e:
+            logger.error("mutagen.mp4 not available: %s", e)
+            return False
+
+        # Detect image format from magic bytes
+        format_type: int = MP4Cover.FORMAT_JPEG
+        if image_data[:8].startswith(b"\x89PNG\r\n\x1a\n"):
+            format_type = MP4Cover.FORMAT_PNG
+            logger.debug("Detected PNG image for %s", file_path)
+        else:
+            logger.debug("Assuming JPEG image for %s", file_path)
+
+        try:
             audio = MP4(file_path)
+        except MP4StreamInfoError as e:
+            logger.error("Corrupt or invalid M4A file %s: %s", file_path, e)
+            return False
+        except (OSError, PermissionError) as e:
+            logger.error("Could not open %s: %s", file_path, e)
+            raise  # permission/IO issues should propagate
+        except MutagenError as e:
+            logger.error("Error reading M4A %s: %s", file_path, e)
+            return False
 
-            # Remove existing covers
-            if "covr" in audio:
-                print("Removing existing cover in M4A")
-                del audio["covr"]
+        # Remove existing covers
+        if "covr" in audio:
+            logger.debug("Removing existing cover in M4A")
+            del audio["covr"]
 
-            # Add new cover - detect format
-            try:
-                # Determine format
-                format_type = MP4Cover.FORMAT_JPEG  # Default
-                if image_data[:8].startswith(b"\x89PNG\r\n\x1a\n"):
-                    format_type = MP4Cover.FORMAT_PNG
-                    print("PNG format detected")
-                else:
-                    print("JPEG format detected")
+        # Try embedding with detected format first
+        try:
+            cover = MP4Cover(image_data, format_type)
+            audio["covr"] = [cover]
+            audio.save()
+            logger.info(
+                "Cover embedded in %s with format %s",
+                file_path,
+                "PNG" if format_type == MP4Cover.FORMAT_PNG else "JPEG",
+            )
+            return True
+        except (OSError, PermissionError) as e:
+            # File system / permission errors should not be swallowed
+            logger.error("Permission/IO error saving cover in %s: %s", file_path, e)
+            raise
+        except MutagenError as e:
+            logger.debug(
+                "Failed to embed with format %s in %s: %s. Trying alternative format.",
+                "PNG" if format_type == MP4Cover.FORMAT_PNG else "JPEG",
+                file_path,
+                e,
+            )
 
-                cover = MP4Cover(image_data, format_type)
-                audio["covr"] = [cover]
-                audio.save()
-                print("M4A file saved with cover")
-                return True
-            except Exception as e:
-                print(f"Error saving M4A cover: {str(e)}")
-                # Try with the other format as last resort
-                try:
-                    alt_format = (
-                        MP4Cover.FORMAT_PNG
-                        if format_type == MP4Cover.FORMAT_JPEG
-                        else MP4Cover.FORMAT_JPEG
-                    )
-                    print(f"Trying with alternative format: {alt_format}")
-                    cover = MP4Cover(image_data, alt_format)
-                    audio["covr"] = [cover]
-                    audio.save()
-                    print("M4A file saved with alternative format")
-                    return True
-                except Exception as e2:
-                    print(f"Error saving with alternative format: {str(e2)}")
-                    return False
-        except Exception as e:
-            print(f"General error in M4A cover: {str(e)}")
+        # Fallback: try the alternate format
+        alt_format = (
+            MP4Cover.FORMAT_PNG
+            if format_type == MP4Cover.FORMAT_JPEG
+            else MP4Cover.FORMAT_JPEG
+        )
+        try:
+            cover = MP4Cover(image_data, alt_format)
+            audio["covr"] = [cover]
+            audio.save()
+            logger.info(
+                "Cover embedded in %s with alternative format %s",
+                file_path,
+                "PNG" if alt_format == MP4Cover.FORMAT_PNG else "JPEG",
+            )
+            return True
+        except (OSError, PermissionError) as e:
+            logger.error(
+                "Permission/IO error saving alternative cover in %s: %s",
+                file_path,
+                e,
+            )
+            raise
+        except MutagenError as e:
+            logger.error(
+                "Could not embed cover in %s after trying both formats: %s",
+                file_path,
+                e,
+            )
             return False

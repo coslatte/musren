@@ -4,6 +4,10 @@ def main() -> None:
     Imports the CLI implementation lazily so importing `app` doesn't
     require all optional runtime dependencies to be installed.
     """
+    import warnings
+
+    warnings.filterwarnings("ignore", category=SyntaxWarning, module="pydub")
+
     from core.cli_typer import app as typer_app
 
     typer_app()

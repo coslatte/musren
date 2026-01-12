@@ -3,9 +3,13 @@ import re
 import platform
 import concurrent.futures
 import subprocess
-from concurrent.futures import ThreadPoolExecutor
 
 from utils.tools import get_audio_files
+
+try:
+    from core.shazam_processor import ShazamProcessor
+except ImportError:
+    ShazamProcessor = None
 
 
 class AudioProcessor:
@@ -13,51 +17,92 @@ class AudioProcessor:
     Main class for processing audio files: recognition, metadata, synchronized lyrics and album covers.
     """
 
-    def __init__(self, directory=".", acoustid_api_key="8XaBELgH", max_workers=4):
+    def __init__(
+        self,
+        directory=".",
+        acoustid_api_key=None,
+        max_workers=4,
+        recursive=False,
+        use_shazam=False,
+    ):
         """
         Initializes the audio processor.
 
         Args:
-            directory (str): Directory where audio files are located
-            acoustid_api_key (str): API key for AcoustID
-            max_workers (int): Maximum number of workers for concurrent processing
+            directory (str): Directorio donde se encuentran los archivos de audio
+            acoustid_api_key (str): Clave API para AcoustID
+            max_workers (int): Número máximo de trabajadores para procesamiento concurrente
         """
 
         self.directory = os.path.abspath(directory)
-        self.acoustid_api_key = acoustid_api_key
+        # Si se pasa None, usar la clave por defecto
+        self.acoustid_api_key = acoustid_api_key or os.environ.get("ACOUSTID_API_KEY")
         self.max_workers = max_workers
+        self.recursive = recursive
         self.os_type = platform.system()
+        self.use_shazam = use_shazam
+        self.shazam_processor = None
 
-    def process_files(self, use_recognition=False, process_lyrics=False):
+        if self.use_shazam:
+            # Reducir concurrencia para Shazam para evitar saturación y timeouts
+            # ShazamIO es pesado y sensible a múltiples peticiones simultáneas
+            self.max_workers = min(max_workers, 2)
+
+            if ShazamProcessor:
+                try:
+                    self.shazam_processor = ShazamProcessor()
+                except Exception as e:
+                    print(f"Error inicializando Shazam: {e}")
+                    self.use_shazam = False
+            else:
+                print("Advertencia: ShazamProcessor no disponible (instala shazamio).")
+                self.use_shazam = False
+
+    def process_files(
+        self,
+        use_recognition=False,
+        process_lyrics=False,
+        fetch_covers=False,
+        progress_callback=None,
+    ):
         """
         Processes all audio files in the directory.
 
         Args:
-            use_recognition (bool): Whether to use audio recognition
-            process_lyrics (bool): Whether to process synchronized lyrics
+            use_recognition (bool): Si debe usar reconocimiento de audio
+            process_lyrics (bool): Si debe procesar letras sincronizadas
 
         Returns:
             dict: Processing results
         """
 
-        files = get_audio_files(self.directory)
+        files = get_audio_files(self.directory, recursive=self.recursive)
         results = {}
 
         if not files:
             return results
 
-        if process_lyrics:
-            results = self._process_files_with_lyrics(files, use_recognition)
+        if process_lyrics or use_recognition or fetch_covers:
+            results = self._process_files_batch(
+                files, use_recognition, process_lyrics, fetch_covers, progress_callback
+            )
 
         return results
 
-    def _process_files_with_lyrics(self, files, use_recognition):
+    def _process_files_batch(
+        self,
+        files,
+        use_recognition,
+        process_lyrics,
+        fetch_covers,
+        progress_callback=None,
+    ):
         """
-        Processes multiple files to add synchronized lyrics.
+        Procesa múltiples archivos para añadir letras sincronizadas.
 
         Args:
-            files (list): List of files to process
-            use_recognition (bool): Whether to use audio recognition
+            files (list): Lista de archivos a procesar
+            use_recognition (bool): Si debe usar reconocimiento de audio
 
         Returns:
             dict: Processing results
@@ -65,12 +110,17 @@ class AudioProcessor:
 
         results = {}
 
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=self.max_workers
+        ) as executor:
             future_to_file = {
                 executor.submit(
-                    self._process_file_with_lyrics,
-                    os.path.join(self.directory, file),
+                    self._process_file,
+                    # file is already absolute path from get_audio_files
+                    file,
                     use_recognition,
+                    process_lyrics,
+                    fetch_covers,
                 ): file
                 for file in files
             }
@@ -80,19 +130,28 @@ class AudioProcessor:
                 try:
                     result = future.result()
                     results[file] = result
+                    if progress_callback:
+                        progress_callback(file, result)
 
                 except Exception as e:
-                    results[file] = {"error": str(e)}
+                    error_result = {"error": str(e)}
+                    results[file] = error_result
+                    if progress_callback:
+                        progress_callback(file, error_result)
 
         return results
 
-    def _process_file_with_lyrics(self, file_path, use_recognition):
+    def _process_file(
+        self, file_path, use_recognition, process_lyrics, fetch_covers=False
+    ):
         """
         Processes an individual file: recognizes the song and embeds synchronized lyrics.
 
         Args:
             file_path (str): Path to the audio file
             use_recognition (bool): Whether to use audio recognition
+            process_lyrics (bool): Whether to process synchronized lyrics
+            fetch_covers (bool): Whether to fetch and download covers
 
         Returns:
             dict: Processing result
@@ -102,7 +161,7 @@ class AudioProcessor:
 
         # Get current metadata
         try:
-            from mutagen import File
+            from mutagen import File  # type: ignore[attr-defined]
         except ImportError:
             return {
                 "status": False,
@@ -116,15 +175,26 @@ class AudioProcessor:
         current_title = (
             audio.get("title", ["Unknown Title"])[0] if audio else "Unknown Title"
         )
-
-        # If AcoustID recognition was requested and metadata is insufficient
-        needs_recognition = use_recognition and (
-            current_artist == "Unknown Artist" or current_title == "Unknown Title"
+        current_album = (
+            audio.get("album", ["Unknown Album"])[0] if audio else "Unknown Album"
         )
 
-        if needs_recognition:
-            # Implement recognition logic here
-            recognition = self._recognize_song(file_path)
+        # Initialize variables for metadata tracking
+        final_artist = current_artist
+        final_title = current_title
+        final_album = current_album
+        metadata_to_update = {}
+        should_update_metadata = False
+        artist_for_lyrics = current_artist
+        title_for_lyrics = current_title
+
+        # If recognition is requested
+        if use_recognition:
+            # Use Shazam if configured and available
+            if self.use_shazam and self.shazam_processor:
+                recognition = self.shazam_processor.recognize(file_path)
+            else:
+                recognition = self._recognize_song(file_path)
 
             if recognition["status"]:
                 result["recognition"] = True
@@ -133,39 +203,77 @@ class AudioProcessor:
                 result["album"] = recognition.get("album", "")
                 result["score"] = recognition.get("score", 0)
 
-                # Update complete file metadata
-                update_success = self._update_audio_metadata(file_path, recognition)
-                result["metadata_updated"] = update_success
-                # Result presentation is handled in the CLI
+                final_artist = result["artist"]
+                final_title = result["title"]
+                final_album = result["album"]
+                artist_for_lyrics = final_artist
+                title_for_lyrics = final_title
 
-                # Use recognized metadata to search for lyrics
-                artist_for_lyrics = recognition.get("artist", "")
-                title_for_lyrics = recognition.get("title", "")
+                metadata_to_update.update(recognition)
+                should_update_metadata = True
             else:
                 result["recognition"] = False
                 result["recognition_error"] = recognition.get(
                     "message", "Unknown error"
                 )
-                artist_for_lyrics = current_artist
-                title_for_lyrics = current_title
-        else:
-            artist_for_lyrics = current_artist
-            title_for_lyrics = current_title
+                # If recognition fails, don't update metadata (not even covers)
+                should_update_metadata = False
 
-        # Search for synchronized lyrics
-        lyrics_result = self._fetch_synced_lyrics(artist_for_lyrics, title_for_lyrics)
+        # If covers were requested, search and add to metadata
+        # Only if recognition was NOT requested (use current tags)
+        # Or if it was requested AND succeeded (use recognized tags)
+        if fetch_covers:
+            # Check if artist is "Unknown" in various languages/formats
+            unknown_variants = ["unknown artist", "artista desconocido", "unknown"]
+            is_unknown = any(v in str(final_artist).lower() for v in unknown_variants)
 
-        if lyrics_result["status"]:
-            result["lyrics_found"] = True
-            # Embed lyrics in the file
-            if self._embed_lyrics(file_path, lyrics_result["lyrics"]):
-                result["lyrics_embedded"] = True
+            if (not use_recognition) or (
+                use_recognition and result.get("recognition", False)
+            ):
+                if final_artist and final_album and not is_unknown:
+                    try:
+                        from core.artwork import AlbumArtManager
+
+                        art_manager = AlbumArtManager()
+                        cover_url = art_manager.fetch_album_cover(
+                            final_artist, final_album
+                        )
+                        if cover_url:
+                            metadata_to_update["cover_url"] = cover_url
+                            should_update_metadata = True
+                    except Exception as e:
+                        result["cover_error"] = str(e)
+
+        # Update complete file metadata if needed
+        if should_update_metadata:
+            update_result = self._update_audio_metadata(file_path, metadata_to_update)
+            # Handle both tuple and bool return types
+            if isinstance(update_result, tuple):
+                update_success, update_error = update_result
             else:
-                result["lyrics_embedded"] = False
-                result["embed_error"] = "Error embedding lyrics"
-        else:
-            result["lyrics_found"] = False
-            result["lyrics_error"] = lyrics_result.get("message", "Unknown error")
+                update_success = update_result
+                update_error = ""
+            result["metadata_updated"] = update_success
+            if not update_success and update_error:
+                result["metadata_error"] = update_error
+
+        # Search for synchronized lyrics only if requested
+        if process_lyrics:
+            lyrics_result = self._fetch_synced_lyrics(
+                artist_for_lyrics, title_for_lyrics
+            )
+
+            if lyrics_result["status"]:
+                result["lyrics_found"] = True
+                # Embed lyrics in the file
+                if self._embed_lyrics(file_path, lyrics_result["lyrics"]):
+                    result["lyrics_embedded"] = True
+                else:
+                    result["lyrics_embedded"] = False
+                    result["embed_error"] = "Error embedding lyrics"
+            else:
+                result["lyrics_found"] = False
+                result["lyrics_error"] = lyrics_result.get("message", "Unknown error")
 
         return result
 
@@ -192,28 +300,38 @@ class AudioProcessor:
                     "message": "The pyacoustid library is not installed. Install it with 'pip install pyacoustid'",
                 }
 
-            # Check if fpcalc (Chromaprint) is available
-            # First try to use fpcalc from current directory
-            script_dir = os.path.dirname(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            )
+            # Verificar si fpcalc (Chromaprint) está disponible
+            # Primero intentamos usar el fpcalc del directorio del proyecto
+            # __file__ = core/audio_processor.py
+            # dirname(__file__) = core/
+            # dirname(dirname(__file__)) = MusRen (project root)
+            script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             os_type = self.os_type
 
             # Determine executable name based on operating system
             fpcalc_name = "fpcalc.exe" if os_type == "Windows" else "fpcalc"
 
-            # Search for fpcalc in current directory
+            # Buscar fpcalc en el directorio actual
             local_fpcalc = os.path.join(script_dir, fpcalc_name)
+            if not os.path.exists(local_fpcalc):
+                local_fpcalc = os.path.join(os.getcwd(), fpcalc_name)
 
             try:
                 # Try to generate acoustic fingerprint using local or system fpcalc
                 if os.path.exists(local_fpcalc):
-                    # Use local binary directly
+                    # Usar directamente el binario local
                     command = [local_fpcalc, "-json", file_path]
                     process = subprocess.Popen(
                         command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
                     )
-                    stdout, stderr = process.communicate()
+                    try:
+                        stdout, stderr = process.communicate(timeout=60)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        return {
+                            "status": False,
+                            "message": "Tiempo de espera agotado al ejecutar fpcalc.",
+                        }
 
                     if process.returncode != 0:
                         return {
@@ -244,8 +362,8 @@ class AudioProcessor:
 
             # Search for matches in AcoustID database with extended metadata
             try:
-                # Free api_key for general use, but users are recommended to get their own key
-                # Request more metadata including tags, genres, and releases for complete information
+                # api_key gratuita para uso general, pero se recomienda que los usuarios obtengan su propia clave
+                # Solicitamos más metadatos incluyendo tags, genres, y releases para obtener información completa
                 results = acoustid.lookup(
                     self.acoustid_api_key,
                     fingerprint,
@@ -253,23 +371,38 @@ class AudioProcessor:
                     meta="recordings releasegroups releases tracks artists tags genres",
                 )
 
+                # Check for API errors in the response
+                if results and results.get("status") == "error":
+                    error_info = results.get("error", {})
+                    error_message = error_info.get("message", "Unknown API error")
+                    error_code = error_info.get("code", "")
+                    if error_code == 4 or "invalid" in error_message.lower():
+                        return {
+                            "status": False,
+                            "message": f"Invalid AcoustID API key. Please get a valid API key at https://acoustid.org/login and use it with the -k option.",
+                        }
+                    return {
+                        "status": False,
+                        "message": f"AcoustID API error: {error_message}",
+                    }
+
                 # Process the results
                 if results and "results" in results and results["results"]:
-                    # Get the first result with the highest score
+                    # Obtener el primer resultado con la mayor puntuación
                     best_result = results["results"][0]
 
-                    # Extract information from the result
+                    # Extraer información del resultado
                     if "recordings" in best_result and best_result["recordings"]:
                         recording = best_result["recordings"][0]
 
-                        # Basic information
+                        # Información básica
                         metadata = {
                             "status": True,
                             "score": best_result.get("score", 0),
                             "acoustid": best_result.get("id", ""),
                         }
 
-                        # Extract artist
+                        # Extraer artista
                         artists = []
                         if "artists" in recording and recording["artists"]:
                             for artist in recording["artists"]:
@@ -277,8 +410,8 @@ class AudioProcessor:
                             metadata["artist"] = artists[0]
                             metadata["artists"] = artists
                         else:
-                            metadata["artist"] = "Unknown Artist"
-                            metadata["artists"] = ["Unknown Artist"]
+                            metadata["artist"] = "Artista Desconocido"
+                            metadata["artists"] = ["Artista Desconocido"]
 
                         # Extract title
                         metadata["title"] = recording.get("title", "Unknown Title")
@@ -388,6 +521,22 @@ class AudioProcessor:
                 }
 
             except acoustid.WebServiceError as e:
+                try:
+                    key = self.acoustid_api_key or ""
+                except Exception:
+                    key = ""
+                if key:
+                    if len(key) > 8:
+                        masked_key = f"{key[:4]}...{key[-4:]}"
+                    else:
+                        masked_key = f"{key[:2]}...{key[-2:]}"
+                else:
+                    masked_key = "(none)"
+                message = (
+                    f"AcoustID web service error: {str(e)} (Key used: {masked_key})"
+                )
+                if "invalid API key" in str(e):
+                    message += ". Please get a valid API Key at https://acoustid.org/login and use it with the -k option"
                 return {
                     "status": False,
                     "message": f"AcoustID web service error: {str(e)}",
@@ -454,7 +603,7 @@ class AudioProcessor:
             if file_path.lower().endswith(".mp3"):
                 # For MP3 files use ID3
                 try:
-                    from mutagen.id3 import ID3, USLT
+                    from mutagen.id3 import ID3, USLT  # type: ignore[attr-defined]
                 except ImportError:
                     return False
 
@@ -469,7 +618,7 @@ class AudioProcessor:
 
                 # Add new lyrics
                 tags["USLT::'eng'"] = USLT(
-                    encoding=3, lang="eng", desc="Lyrics", text=lyrics_content
+                    encoding=1, lang="eng", desc="Lyrics", text=lyrics_content
                 )
 
                 tags.save(file_path)
@@ -478,7 +627,7 @@ class AudioProcessor:
             else:
                 # For other formats use generic mutagen
                 try:
-                    from mutagen import File
+                    from mutagen import File  # type: ignore[attr-defined]
                 except ImportError:
                     return False
 
@@ -505,7 +654,7 @@ class AudioProcessor:
             metadata (dict): Metadata to update
 
         Returns:
-            bool: True if updated successfully
+            tuple: (success: bool, error: str) or bool for backward compatibility
         """
         try:
             file_ext = os.path.splitext(file_path)[1].lower()
@@ -513,8 +662,8 @@ class AudioProcessor:
             if file_ext == ".mp3":
                 # For MP3 files use ID3
                 try:
-                    from mutagen.id3 import (
-                        ID3,
+                    from mutagen.id3 import ID3
+                    from mutagen.id3._frames import (
                         TIT2,
                         TPE1,
                         TALB,
@@ -525,40 +674,52 @@ class AudioProcessor:
                         TPE2,
                         TCOM,
                     )
+                except ImportError:
+                    return False, "mutagen.id3 not available"
 
+                try:
                     tags = ID3(file_path)
                 except Exception:
                     tags = ID3()
 
+                changed = False
+
+                def update_tag(frame_id, frame_cls, value):
+                    nonlocal changed
+                    # Force update to ensure correct encoding (UTF-16 for Windows compatibility)
+                    tags[frame_id] = frame_cls(encoding=1, text=str(value))
+                    changed = True
+
                 # Update basic metadata
                 if "title" in metadata:
-                    tags["TIT2"] = TIT2(encoding=3, text=metadata["title"])
+                    update_tag("TIT2", TIT2, metadata["title"])
                 if "artist" in metadata:
-                    tags["TPE1"] = TPE1(encoding=3, text=metadata["artist"])
+                    update_tag("TPE1", TPE1, metadata["artist"])
                 if "album" in metadata:
-                    tags["TALB"] = TALB(encoding=3, text=metadata["album"])
+                    update_tag("TALB", TALB, metadata["album"])
                 if "date" in metadata:
-                    tags["TDRC"] = TDRC(encoding=3, text=metadata["date"])
+                    update_tag("TDRC", TDRC, metadata["date"])
                 if "genre" in metadata:
-                    tags["TCON"] = TCON(encoding=3, text=metadata["genre"])
+                    update_tag("TCON", TCON, metadata["genre"])
                 if "tracknumber" in metadata:
                     track_value = metadata["tracknumber"]
                     if "totaltracks" in metadata:
                         track_value = f"{track_value}/{metadata['totaltracks']}"
-                    tags["TRCK"] = TRCK(encoding=3, text=track_value)
+                    update_tag("TRCK", TRCK, track_value)
                 if "discnumber" in metadata:
                     disc_value = metadata["discnumber"]
                     if "totaldiscs" in metadata:
                         disc_value = f"{disc_value}/{metadata['totaldiscs']}"
-                    tags["TPOS"] = TPOS(encoding=3, text=disc_value)
+                    update_tag("TPOS", TPOS, disc_value)
                 if "albumartist" in metadata:
-                    tags["TPE2"] = TPE2(encoding=3, text=metadata["albumartist"])
+                    update_tag("TPE2", TPE2, metadata["albumartist"])
                 if "composer" in metadata:
-                    tags["TCOM"] = TCOM(encoding=3, text=metadata["composer"])
+                    update_tag("TCOM", TCOM, metadata["composer"])
 
-                tags.save(file_path)
+                if changed:
+                    tags.save(file_path, v2_version=3)
 
-                # If there's cover URL, download and embed
+                # If there is a cover URL, download and embed
                 if "cover_url" in metadata:
                     # Import album art manager
                     from core.artwork import AlbumArtManager
@@ -569,16 +730,19 @@ class AudioProcessor:
                     if image_data:
                         art_manager.embed_album_art(file_path, image_data)
 
-                return True
+                return True, ""
 
             elif file_ext in [".flac", ".ogg"]:
                 # For FLAC and OGG files
                 try:
-                    from mutagen import File
+                    from mutagen import File  # type: ignore[attr-defined]
                 except ImportError:
-                    return False
+                    return False, "Mutagen not installed"
 
                 audio = File(file_path)
+                if audio is None:
+                    return False, "Could not open audio file"
+                changed = False
 
                 # Field mapping
                 field_mapping = {
@@ -598,11 +762,16 @@ class AudioProcessor:
                 # Update metadata
                 for meta_key, file_key in field_mapping.items():
                     if meta_key in metadata:
-                        audio[file_key] = str(metadata[meta_key])
+                        new_val = str(metadata[meta_key])
+                        current_val = audio.get(file_key, [""])[0]
+                        if current_val != new_val:
+                            audio[file_key] = new_val
+                            changed = True
 
-                audio.save()
+                if changed:
+                    audio.save()
 
-                # If there's cover URL, download and embed (only for FLAC)
+                # If there is a cover URL, download and embed (only for FLAC)
                 if "cover_url" in metadata and file_ext == ".flac":
                     # Import album art manager
                     from core.artwork import AlbumArtManager
@@ -613,14 +782,14 @@ class AudioProcessor:
                     if image_data:
                         art_manager.embed_album_art(file_path, image_data)
 
-                return True
+                return True, ""
 
             elif file_ext == ".m4a":
                 # For M4A/AAC files
                 try:
                     from mutagen.mp4 import MP4
                 except ImportError:
-                    return False
+                    return False, "Mutagen not installed"
 
                 audio = MP4(file_path)
 
@@ -635,37 +804,37 @@ class AudioProcessor:
                     "composer": "\xa9wrt",
                 }
 
+                changed = False
+
                 # Update metadata
                 for meta_key, file_key in field_mapping.items():
                     if meta_key in metadata:
                         audio[file_key] = [metadata[meta_key]]
+                        changed = True
 
                 # Handle track/disc number for M4A
                 if "tracknumber" in metadata:
                     try:
-                        track = int(metadata["tracknumber"])
+                        trkn = int(metadata["tracknumber"])
                         total = int(metadata.get("totaltracks", 0))
-                        if total > 0:
-                            audio["trkn"] = [(track, total)]
-                        else:
-                            audio["trkn"] = [(track, 0)]
-                    except (ValueError, TypeError):
+                        audio["trkn"] = [(trkn, total)]
+                        changed = True
+                    except ValueError:
                         pass
 
                 if "discnumber" in metadata:
                     try:
-                        disc = int(metadata["discnumber"])
+                        disk = int(metadata["discnumber"])
                         total = int(metadata.get("totaldiscs", 0))
-                        if total > 0:
-                            audio["disk"] = [(disc, total)]
-                        else:
-                            audio["disk"] = [(disc, 0)]
-                    except (ValueError, TypeError):
+                        audio["disk"] = [(disk, total)]
+                        changed = True
+                    except ValueError:
                         pass
 
-                audio.save()
+                if changed:
+                    audio.save()
 
-                # If there's cover URL, download and embed
+                # If there is a cover URL, download and embed
                 if "cover_url" in metadata:
                     # Import album art manager
                     from core.artwork import AlbumArtManager
@@ -681,7 +850,7 @@ class AudioProcessor:
             else:
                 # For other formats, use generic handling
                 try:
-                    from mutagen import File
+                    from mutagen._file import File
                 except ImportError:
                     return False
 
@@ -709,31 +878,44 @@ class AudioProcessor:
         except Exception:
             return False
 
-    def rename_files(self):
+    def rename_files(self, progress_callback=None):
         """
         Renames audio files based on their metadata.
         If the file doesn't have the necessary metadata (artist or title),
         it is not renamed and a message is shown.
 
+        Args:
+            progress_callback (callable): Function to call upon completing each file
+
         Returns:
             dict: Changes made (new_name: original_name)
         """
 
-        files = get_audio_files(directory=self.directory)
+        files = get_audio_files(directory=self.directory, recursive=self.recursive)
         changes = {}
 
         for file in files:
             try:
-                file_path = os.path.join(self.directory, file)
+                # file is already an absolute path because get_audio_files returns absolute paths
+                file_path = file
                 try:
-                    from mutagen import File
+                    from mutagen import File  # type: ignore[attr-defined]
                 except ImportError:
+                    if progress_callback:
+                        progress_callback(
+                            file, {"status": False, "error": "Mutagen missing"}
+                        )
                     continue
 
                 audio = File(file_path, easy=True)
 
                 # Check if necessary metadata exists
                 if not audio or not audio.tags:
+                    if progress_callback:
+                        progress_callback(
+                            file,
+                            {"status": False, "skipped": True, "reason": "No tags"},
+                        )
                     continue
 
                 artist = audio.get("artist", [""])[0]
@@ -746,64 +928,156 @@ class AudioProcessor:
                     or artist == "Unknown Artist"
                     or title == "Unknown Title"
                 ):
+                    if progress_callback:
+                        progress_callback(
+                            file,
+                            {
+                                "status": False,
+                                "skipped": True,
+                                "reason": "Missing metadata",
+                            },
+                        )
                     continue
 
                 # Artist - Title.format (.mp3, .flac, etc.)
                 new_name = f"{artist} - {title}{os.path.splitext(file)[1]}"
 
-                actual_new_name, changed = self._safe_rename(file, new_name)
+                actual_new_path, changed = self._safe_rename(file, new_name)
                 if changed:
-                    changes[actual_new_name] = file
-            except Exception:
-                pass
+                    changes[actual_new_path] = file
+                    if progress_callback:
+                        progress_callback(
+                            file,
+                            {
+                                "status": True,
+                                "renamed": True,
+                                "new_name": os.path.basename(actual_new_path),
+                            },
+                        )
+                else:
+                    if progress_callback:
+                        progress_callback(
+                            file,
+                            {
+                                "status": True,
+                                "renamed": False,
+                                "reason": "No change needed",
+                            },
+                        )
+            except Exception as e:
+                if progress_callback:
+                    progress_callback(file, {"status": False, "error": str(e)})
 
-        # CLI will show renaming summary
+        # The CLI will show the rename summary
 
         return changes
 
-    def undo_rename(self, changes: dict):
-        files = get_audio_files(self.directory)
-        for new_name, old_name in changes.items():
+    def undo_rename(self, changes: dict, progress_callback=None):
+        """
+        Reverts file renames.
+
+        Args:
+            changes (dict): {new_absolute_path: old_absolute_path}
+            progress_callback (callable): Function to call upon completing each file
+        """
+        for new_path, old_path in changes.items():
             try:
-                # Check if the new name exists in the directory
-                if new_name in files:
-                    self._safe_rename(new_name, old_name)
-            except Exception:
-                pass
+                if os.path.exists(new_path):
+                    if not os.path.exists(old_path):
+                        os.rename(new_path, old_path)
+                        if progress_callback:
+                            progress_callback(
+                                new_path, {"status": True, "restored": True}
+                            )
+                    else:
+                        if progress_callback:
+                            progress_callback(
+                                new_path, {"status": False, "error": "Target exists"}
+                            )
+                else:
+                    if progress_callback:
+                        progress_callback(
+                            new_path, {"status": False, "error": "Source missing"}
+                        )
+            except Exception as e:
+                if progress_callback:
+                    progress_callback(new_path, {"status": False, "error": str(e)})
 
     def _safe_rename(self, old_name, new_name):
         """
         Renames a file safely, avoiding name conflicts.
 
         Args:
-            old_name (str): Original file name
-            new_name (str): New name for the file
+            old_name (str): Original filename
+            new_name (str): New filename
 
         Returns:
             tuple: (final_name, change_made)
         """
 
-        old_path = os.path.join(self.directory, old_name)
-        new_path = os.path.join(self.directory, new_name)
-
-        if old_path == new_path:
-            return old_name, False
+        if os.path.isabs(old_name):
+            old_path = old_name
+            directory = os.path.dirname(old_name)
+        else:
+            old_path = os.path.join(self.directory, old_name)
+            directory = self.directory
 
         new_name = self._sanitize_filename(new_name)
-        new_path = os.path.join(self.directory, new_name)
+        new_path = os.path.join(directory, new_name)
+
+        if os.path.normcase(old_path) == os.path.normcase(new_path):
+            return new_path, False
+
+        if os.path.exists(new_path) and os.path.normcase(new_path) != os.path.normcase(
+            old_path
+        ):
+            if self._are_files_identical(old_path, new_path):
+                try:
+                    os.remove(old_path)
+
+                    return new_path, True
+                except OSError:
+                    pass
+
         base, extension = os.path.splitext(new_name)
         counter = 1
 
         while os.path.exists(new_path):
+            if os.path.normcase(new_path) == os.path.normcase(old_path):
+                break
+
             new_name = f"{base} ({counter}){extension}"
-            new_path = os.path.join(self.directory, new_name)
+            new_path = os.path.join(directory, new_name)
             counter += 1
+
+        if os.path.normcase(new_path) == os.path.normcase(old_path):
+            return new_path, False
 
         try:
             os.rename(old_path, new_path)
-            return new_name, True
+            return new_path, True
         except OSError:
-            return old_name, False
+            return old_path, False
+
+    def _are_files_identical(self, path1, path2):
+        """
+        Compara dos archivos para ver si son idénticos (tamaño y contenido).
+        """
+        try:
+            if os.path.getsize(path1) != os.path.getsize(path2):
+                return False
+
+            # Comparar contenido en bloques
+            with open(path1, "rb") as f1, open(path2, "rb") as f2:
+                while True:
+                    b1 = f1.read(8192)
+                    b2 = f2.read(8192)
+                    if b1 != b2:
+                        return False
+                    if not b1:
+                        return True
+        except OSError:
+            return False
 
     def _sanitize_filename(self, filename):
         """

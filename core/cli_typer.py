@@ -9,6 +9,14 @@ from dotenv import load_dotenv
 from rich import box
 from rich.console import Console
 from rich.panel import Panel
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TaskProgressColumn,
+    TextColumn,
+    TimeRemainingColumn,
+)
 from rich.table import Table
 from rich.traceback import install as rich_traceback_install
 
@@ -26,7 +34,6 @@ console = Console()
 
 @app.callback(invoke_without_command=True)
 def main(
-    help: bool = typer.Option(False, "--help", "-h", is_eager=True),
     directory: Path = typer.Option(
         Path.cwd(),
         "--directory",
@@ -36,23 +43,30 @@ def main(
         dir_okay=True,
         help="Directory of the files, if not specified the current one is used",
     ),
+    recursive: bool = typer.Option(
+        False, "--recursive", "-R", help="Search files in subdirectories"
+    ),
     lyrics: bool = typer.Option(
         False, "--lyrics", "-l", help="Search and embed synchronized lyrics"
     ),
     recognition: bool = typer.Option(
         False, "--recognition", "-r", help="Use audio recognition with AcoustID"
     ),
-    cover: bool = typer.Option(
-        False, "--covers", "-c", help="Add album covers"
-    ),
+    cover: bool = typer.Option(False, "--covers", "-c", help="Add album covers"),
     api_key: Optional[str] = typer.Option(
         None, "--api-key", "-k", help="AcoustID API key (optional)"
+    ),
+    shazam: bool = typer.Option(
+        False, "--shazam", "-s", help="Use Shazam instead of AcoustID"
     ),
     yes: bool = typer.Option(
         False, "--yes", "-y", help="Execute everything without confirmations"
     ),
     albums: bool = typer.Option(
-        False, "--albums", "-a", help="Organize files into album folders after processing"
+        False,
+        "--albums",
+        "-a",
+        help="Organize files into album folders after processing",
     ),
 ):
     console.rule("[bold cyan]MusRen[/bold cyan]")
@@ -75,21 +89,27 @@ def main(
     )
     opts_table.add_column("Key", style="bold cyan")
     opts_table.add_column("Value", style="white")
-    opts_table.add_row("Directory (-d)", str(directory))
+    opts_table.add_row("Directory", str(directory))
+    opts_table.add_row("Recursive (-R)", "Yes" if recursive else "No")
     opts_table.add_row("Lyrics (-l)", "Yes" if lyrics else "No")
     opts_table.add_row("Recognition (-r)", "Yes" if recognition else "No")
+    opts_table.add_row("Shazam (-s)", "Yes" if shazam else "No")
     opts_table.add_row("Covers (-c)", "Yes" if cover else "No")
     opts_table.add_row("Auto-confirm (-y)", "Yes" if yes else "No")
     opts_table.add_row("Organize albums (-a)", "Yes" if albums else "No")
-    opts_table.add_row("Help (-h)", "Yes" if help else "No")
     console.print(Panel(opts_table, border_style="cyan"))
 
     if api_key is None:
         api_key = os.getenv("ACOUSTID_API_KEY")
 
-    processor = AudioProcessor(directory=directory, acoustid_api_key=api_key)
+    processor = AudioProcessor(
+        directory=str(directory),
+        acoustid_api_key=str(api_key) if api_key else os.getenv("ACOUSTID_API_KEY"),
+        recursive=recursive,
+        use_shazam=shazam,
+    )
     with console.status("Searching for audio files...", spinner="line"):
-        files = get_audio_files(directory=directory)
+        files = get_audio_files(directory=directory, recursive=recursive)
 
     if not files:
         console.print(
@@ -107,7 +127,7 @@ def main(
     summary_table.add_row("Files found", str(len(files)))
     console.print(summary_table)
 
-    if cover:
+    if cover and not (lyrics or recognition):
         console.print(
             Panel.fit(
                 "The album cover search and embedding function will be used.",
@@ -116,41 +136,62 @@ def main(
             )
         )
         try:
-            with console.status("Adding covers...", spinner="bouncingBar"):
-                add_covers(directory)
+            # Use the main processor instead of the legacy add_covers function
+            # This ensures recursion and centralized logic are respected
+            stats = process_lyrics_and_stats(
+                processor,
+                use_recognition=False,
+                process_lyrics=False,
+                fetch_covers=True,
+            )
             console.print("[bold green]Covers added successfully.[/bold green]")
         except Exception as e:
             console.print(Panel.fit(str(e), border_style="red", title="Error"))
             raise typer.Exit(1)
 
-    if lyrics:
+    if lyrics or recognition:
+        title_text = "Lyrics"
+        if recognition and not lyrics:
+            title_text = "Recognition"
+        elif recognition and lyrics:
+            title_text = "Recognition and Lyrics"
+
         console.print(
             Panel.fit(
-                "The synchronized lyrics search and embedding function will be used.",
+                f"The {title_text} function will be used.",
                 border_style="magenta",
-                title="Lyrics",
+                title=title_text,
             )
         )
-        with console.status("Processing lyrics...", spinner="dots2"):
-            stats = process_lyrics_and_stats(processor, use_recognition=recognition)
 
-        stats_table = Table(title="Lyrics Processing Summary", box=box.SIMPLE)
+        stats = process_lyrics_and_stats(
+            processor,
+            use_recognition=recognition,
+            process_lyrics=lyrics,
+            fetch_covers=cover,
+        )
+
+        stats_table = Table(title=f"Processing Summary ({title_text})", box=box.SIMPLE)
         stats_table.add_column("Metric", style="bold cyan")
         stats_table.add_column("Value", style="white")
         stats_table.add_row("Total files", str(stats.get("total", 0)))
-        stats_table.add_row("Recognized", str(stats.get("recognized", 0)))
-        stats_table.add_row("Lyrics found", str(stats.get("lyrics_found", 0)))
-        stats_table.add_row("Lyrics embedded", str(stats.get("lyrics_embedded", 0)))
+        if recognition:
+            stats_table.add_row("Recognized", str(stats.get("recognized", 0)))
+        if lyrics:
+            stats_table.add_row("Lyrics found", str(stats.get("lyrics_found", 0)))
+            stats_table.add_row("Lyrics embedded", str(stats.get("lyrics_embedded", 0)))
         console.print(stats_table)
 
         results = stats.get("results", {}) or {}
         if results:
-            detail = Table(title="Detail per file", box=box.SIMPLE_HEAVY)
+            detail = Table(title="File Detail", box=box.SIMPLE_HEAVY)
             detail.add_column("File", style="bold")
-            detail.add_column("Rec.", justify="center")
+            if recognition:
+                detail.add_column("Rec.", justify="center")
             detail.add_column("Artist - Title", overflow="fold", style="white")
-            detail.add_column("Lyrics", justify="center")
-            detail.add_column("Embedded", justify="center")
+            if lyrics:
+                detail.add_column("Lyrics", justify="center")
+                detail.add_column("Embedded", justify="center")
             detail.add_column("Error", style="red")
 
             def _tick(val: bool) -> str:
@@ -166,23 +207,33 @@ def main(
                         f"{res.get('artist', '')} - {res.get('title', '')}".strip()
                     )
                 if not artist_title:
-                    artist_title = file.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+                    artist_title = os.path.basename(file)
 
                 error_msg = (
                     res.get("embed_error")
                     or res.get("lyrics_error")
                     or res.get("recognition_error")
+                    or res.get("metadata_error")
                     or ""
                 )
 
-                detail.add_row(
-                    file,
-                    _tick(recognized),
-                    artist_title,
-                    _tick(lyrics_found),
-                    _tick(embedded),
-                    error_msg,
-                )
+                # If recognition error, show explicitly
+                if recognition and not recognized and not error_msg:
+                    error_msg = "Not recognized (Low score or no match)"
+
+                row_data = [os.path.basename(file)]
+                if recognition:
+                    row_data.append(_tick(recognized))
+
+                row_data.append(artist_title)
+
+                if lyrics:
+                    row_data.append(_tick(lyrics_found))
+                    row_data.append(_tick(embedded))
+
+                row_data.append(error_msg)
+
+                detail.add_row(*row_data)
 
             console.print(detail)
 
@@ -202,15 +253,52 @@ def main(
         )
         raise typer.Exit()
 
-    with console.status("Renaming files...", spinner="line"):
-        changes = processor.rename_files()
+    # Count files for renaming progress bar
+    files_to_rename = get_audio_files(directory, recursive=recursive)
+
+    with Progress(
+        SpinnerColumn(style="bold cyan"),
+        TextColumn("[bold cyan]{task.description}"),
+        BarColumn(bar_width=None, complete_style="cyan", finished_style="green"),
+        TaskProgressColumn(),
+        TimeRemainingColumn(),
+        console=console,
+        expand=True,
+    ) as progress:
+        task_id = progress.add_task("Renaming...", total=len(files_to_rename))
+
+        def rename_callback(file_path, result):
+            filename = os.path.basename(file_path)
+            if len(filename) > 40:
+                filename = filename[:37] + "..."
+
+            status = ""
+            if result.get("renamed"):
+                status = "[green]Renamed[/green]"
+            elif result.get("skipped"):
+                status = "[dim]Skipped[/dim]"
+            elif result.get("error"):
+                status = "[red]Error[/red]"
+            else:
+                status = "[dim]No changes[/dim]"
+
+            progress.update(
+                task_id,
+                advance=1,
+                description=f"Renaming: [bold white]{filename}[/bold white] - {status}",
+            )
+
+        changes = processor.rename_files(progress_callback=rename_callback)
 
     if changes:
         changes_table = Table(title="Name changes", box=box.SIMPLE_HEAVY)
         changes_table.add_column("Before", style="yellow")
         changes_table.add_column("After", style="green")
-        for new_name, old_name in changes.items():
-            changes_table.add_row(old_name, new_name)
+        for new_path, old_path in changes.items():
+            # Show only filename to avoid giant table
+            changes_table.add_row(
+                os.path.basename(old_path), os.path.basename(new_path)
+            )
         console.print(changes_table)
 
         keep_changes = True
@@ -218,8 +306,32 @@ def main(
             keep_changes = typer.confirm("Do you want to keep the name changes?")
 
         if not keep_changes:
-            with console.status("Reverting changes...", spinner="dots"):
-                processor.undo_rename(changes)
+            with Progress(
+                SpinnerColumn(style="bold yellow"),
+                TextColumn("[bold yellow]{task.description}"),
+                BarColumn(
+                    bar_width=None, complete_style="yellow", finished_style="green"
+                ),
+                TaskProgressColumn(),
+                TimeRemainingColumn(),
+                console=console,
+                expand=True,
+            ) as progress:
+                task_id = progress.add_task("Reverting...", total=len(changes))
+
+                def undo_callback(file_path, result):
+                    filename = os.path.basename(file_path)
+                    if len(filename) > 40:
+                        filename = filename[:37] + "..."
+
+                    progress.update(
+                        task_id,
+                        advance=1,
+                        description=f"Reverting: [bold white]{filename}[/bold white]",
+                    )
+
+                processor.undo_rename(changes, progress_callback=undo_callback)
+
             console.print(
                 Panel.fit(
                     "The name changes have been reverted.",
@@ -248,7 +360,7 @@ def main(
     )
 
     if albums:
-        files = get_audio_files(directory=directory)
+        files = get_audio_files(directory=directory, recursive=recursive)
         if files:
             proceed_organize = True
             if not yes:
@@ -270,10 +382,70 @@ def main(
             raise typer.Exit(0)
 
 
-def process_lyrics_and_stats(processor, use_recognition: bool) -> Dict[str, Any]:
-    lyrics_results = processor.process_files(
-        use_recognition=use_recognition, process_lyrics=True
-    )
+def process_lyrics_and_stats(
+    processor,
+    use_recognition: bool,
+    process_lyrics: bool = True,
+    fetch_covers: bool = False,
+) -> Dict[str, Any]:
+    # Count files first for progress bar
+    files = get_audio_files(processor.directory, recursive=processor.recursive)
+    total_files = len(files)
+
+    if total_files == 0:
+        return {
+            "total": 0,
+            "recognized": 0,
+            "lyrics_found": 0,
+            "lyrics_embedded": 0,
+            "results": {},
+        }
+
+    lyrics_results = {}
+
+    with Progress(
+        SpinnerColumn(style="bold cyan"),
+        TextColumn("[bold cyan]{task.description}"),
+        BarColumn(bar_width=None, complete_style="cyan", finished_style="green"),
+        TaskProgressColumn(),
+        TimeRemainingColumn(),
+        console=console,
+        expand=True,
+    ) as progress:
+        task_id = progress.add_task("Starting...", total=total_files)
+
+        def progress_callback(file_path, result):
+            filename = os.path.basename(file_path)
+            # Truncate name if too long
+            if len(filename) > 40:
+                filename = filename[:37] + "..."
+
+            status = ""
+            if result.get("error"):
+                status = "[red]Error[/red]"
+            elif result.get("metadata_error"):
+                status = "[red]Meta Error[/red]"
+            elif result.get("recognition"):
+                status = "[green]Recognized[/green]"
+            elif result.get("lyrics_found"):
+                status = "[green]Lyrics OK[/green]"
+            elif result.get("metadata_updated"):
+                status = "[green]Updated[/green]"
+            else:
+                status = "[dim]No changes[/dim]"
+
+            progress.update(
+                task_id,
+                advance=1,
+                description=f"Processing: [bold white]{filename}[/bold white] - {status}",
+            )
+
+        lyrics_results = processor.process_files(
+            use_recognition=use_recognition,
+            process_lyrics=process_lyrics,
+            fetch_covers=fetch_covers,
+            progress_callback=progress_callback,
+        )
 
     stats = {
         "total": 0,
@@ -288,69 +460,126 @@ def process_lyrics_and_stats(processor, use_recognition: bool) -> Dict[str, Any]
 
     stats["total"] = len(lyrics_results)
     stats["recognized"] = sum(
-        1 for f, r in lyrics_results.items() if r.get("recognition", False)
+        1 for _, r in lyrics_results.items() if r.get("recognition", False)
     )
     stats["lyrics_found"] = sum(
-        1 for f, r in lyrics_results.items() if r.get("lyrics_found", False)
+        1 for _, r in lyrics_results.items() if r.get("lyrics_found", False)
     )
     stats["lyrics_embedded"] = sum(
-        1 for f, r in lyrics_results.items() if r.get("lyrics_embedded", False)
+        1 for _, r in lyrics_results.items() if r.get("lyrics_embedded", False)
     )
 
     return stats
 
 
 def organize_files_by_albums(directory: Path, files: list[str]) -> None:
+    """
+    Organizes audio files into album folders.
+
+    Args:
+        directory: Base directory where album folders will be created
+        files: List of absolute file paths to organize
+    """
     album_groups = defaultdict(list)
 
-    for file in files:
-        file_path = directory / file
+    for file_path in files:
+        # file_path is already an absolute path from get_audio_files
+        file_path = Path(file_path)
         try:
-            from mutagen import File as MutagenFile
-            audio = MutagenFile(file_path)
-            if audio and hasattr(audio, 'tags') and audio.tags:
-                album = audio.tags.get('TALB', ['Unknown Album'])[0]
-                if not album or album.strip() == '':
-                    album = 'Unknown Album'
-            else:
-                album = 'Unknown Album'
+            from mutagen._file import File as MutagenFile
+
+            audio = MutagenFile(file_path, easy=True)
+            album = "Unknown Album"
+
+            if audio:
+                # With easy=True, we can use standardized tag names
+                album_tags = audio.get("album", [])
+                if album_tags:
+                    album = album_tags[0] if album_tags[0] else "Unknown Album"
         except Exception:
-            album = 'Unknown Album'
+            album = "Unknown Album"
 
-        album_groups[album].append(file)
+        album_groups[album].append(file_path)
 
-    singles_dir = directory / 'Singles'
+    singles_dir = directory / "Singles"
     singles_dir.mkdir(exist_ok=True)
 
     for album, tracks in album_groups.items():
-        if album != 'Unknown Album':
+        if album != "Unknown Album":
             # Sanitize album name for folder
-            safe_album = "".join(c for c in album if c.isalnum() or c in (' ', '-', '_')).rstrip()
+            safe_album = "".join(
+                c for c in album if c.isalnum() or c in (" ", "-", "_")
+            ).rstrip()
             if not safe_album:
-                safe_album = 'Unknown Album'
+                safe_album = "Unknown Album"
             album_dir = directory / safe_album
             album_dir.mkdir(exist_ok=True)
             for track in tracks:
                 try:
-                    shutil.move(str(directory / track), str(album_dir / track))
+                    dest_path = album_dir / track.name
+                    shutil.move(str(track), str(dest_path))
+                    console.print(f"[dim]Moved {track.name} → {safe_album}/[/dim]")
                 except Exception as e:
-                    console.print(f"[red]Error moving {track} to {album_dir}: {e}[/red]")
+                    console.print(
+                        f"[red]Error moving {track.name} to {album_dir}: {e}[/red]"
+                    )
         else:
             for track in tracks:
                 try:
-                    shutil.move(str(directory / track), str(singles_dir / track))
+                    dest_path = singles_dir / track.name
+                    shutil.move(str(track), str(dest_path))
+                    console.print(f"[dim]Moved {track.name} → Singles/[/dim]")
                 except Exception as e:
-                    console.print(f"[red]Error moving {track} to Singles: {e}[/red]")
+                    console.print(
+                        f"[red]Error moving {track.name} to Singles: {e}[/red]"
+                    )
 
 
 def add_covers(directory: Path) -> None:
     try:
         import core.install_covers as install_covers
 
-        install_covers.run(str(directory))
+        # Count files first
+        files = get_audio_files(directory)
+        total_files = len(files)
+
+        if total_files == 0:
+            console.print("[yellow]No audio files found.[/yellow]")
+            return
+
+        with Progress(
+            SpinnerColumn(style="bold cyan"),
+            TextColumn("[bold cyan]{task.description}"),
+            BarColumn(bar_width=None, complete_style="cyan", finished_style="green"),
+            TaskProgressColumn(),
+            TimeRemainingColumn(),
+            console=console,
+            expand=True,
+        ) as progress:
+            task_id = progress.add_task("Adding covers...", total=total_files)
+
+            def progress_callback(file_path, result):
+                filename = os.path.basename(file_path)
+                if len(filename) > 40:
+                    filename = filename[:37] + "..."
+
+                status = ""
+                if not result.get("status"):
+                    status = "[red]Error[/red]"
+                elif result.get("skipped"):
+                    status = "[dim]Already exists[/dim]"
+                else:
+                    status = "[green]Added[/green]"
+
+                progress.update(
+                    task_id,
+                    advance=1,
+                    description=f"Processing: [bold white]{filename}[/bold white] - {status}",
+                )
+
+            install_covers.run(str(directory), progress_callback=progress_callback)
+
     except ImportError as e:
-        raise RuntimeError(
-            "Could not import the cover installation module."
-        ) from e
+        raise RuntimeError("Could not import the cover installation module.") from e
     except Exception as e:
         raise RuntimeError(f"Error executing cover installation: {e}") from e

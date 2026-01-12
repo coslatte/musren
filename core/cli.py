@@ -12,10 +12,6 @@ from utils.tools import get_audio_files
 
 
 class Cli:
-    args: argparse.Namespace = None
-    processor: AudioProcessor = None
-    parser: argparse.ArgumentParser = None
-
     def __init__(self):
         self.parser = argparse.ArgumentParser(description=PARSER_DESCRIPTION)
         self._init_parser()
@@ -27,9 +23,7 @@ class Cli:
     def _verify_sync_lyrics(self) -> None:
         use_acoustid = self.args.recognition
 
-        start_lyrics = input(
-            "Start searching and embedding lyrics? (Y/N): "
-        ).lower()
+        start_lyrics = input("Start searching and embedding lyrics? (Y/N): ").lower()
         if start_lyrics == "y":
             lyrics_results = self.processor.process_files(
                 use_recognition=use_acoustid, process_lyrics=True
@@ -39,14 +33,14 @@ class Cli:
             if lyrics_results:
                 total = len(lyrics_results)
                 recognized = sum(
-                    1 for f, r in lyrics_results.items() if r.get("recognition", False)
+                    1 for _, r in lyrics_results.items() if r.get("recognition", False)
                 )
                 lyrics_found = sum(
-                    1 for f, r in lyrics_results.items() if r.get("lyrics_found", False)
+                    1 for _, r in lyrics_results.items() if r.get("lyrics_found", False)
                 )
                 lyrics_embedded = sum(
                     1
-                    for f, r in lyrics_results.items()
+                    for _, r in lyrics_results.items()
                     if r.get("lyrics_embedded", False)
                 )
 
@@ -63,7 +57,7 @@ class Cli:
             import core.install_covers as install_covers
 
             print("Executing add covers...")
-            install_covers.main()
+            install_covers.run(self.args.directory if self.args else ".")
             return
         except ImportError:
             print("Error importing the cover installation module.")
@@ -135,9 +129,7 @@ class Cli:
 
         # Check if we should search for synchronized lyrics
         if self.args.lyrics:
-            print(
-                "The synchronized lyrics search and embedding function will be used."
-            )
+            print("The synchronized lyrics search and embedding function will be used.")
             self._verify_sync_lyrics()
 
         # Rename files
