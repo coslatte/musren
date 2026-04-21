@@ -32,6 +32,46 @@ app = typer.Typer(help=PARSER_DESCRIPTION)
 console = Console()
 
 
+def resolve_directory_with_audio_files(
+    directory: Path, recursive: bool
+) -> tuple[Path, list[str]]:
+    current_directory = directory
+
+    while True:
+        with console.status("Searching for audio files...", spinner="line"):
+            files = get_audio_files(directory=current_directory, recursive=recursive)
+
+        if files:
+            return current_directory, files
+
+        console.print(
+            Panel.fit(
+                f"No audio files found in '{current_directory}'.",
+                border_style="yellow",
+                title="Warning",
+            )
+        )
+
+        if not typer.confirm("Do you want to search another directory?"):
+            return current_directory, []
+
+        while True:
+            next_directory_raw = typer.prompt("Enter the exact directory to search")
+            next_directory = Path(next_directory_raw).expanduser()
+
+            if next_directory.is_dir():
+                current_directory = next_directory
+                break
+
+            console.print(
+                Panel.fit(
+                    "The provided path is not a valid directory.",
+                    border_style="red",
+                    title="Error",
+                )
+            )
+
+
 @app.callback(invoke_without_command=True)
 def main(
     directory: Path = typer.Option(
@@ -81,6 +121,11 @@ def main(
             )
             raise typer.Exit(1)
 
+    if api_key is None:
+        api_key = os.getenv("ACOUSTID_API_KEY")
+
+    directory, files = resolve_directory_with_audio_files(directory, recursive)
+
     opts_table = Table(
         title="Configuration",
         box=box.SIMPLE_HEAVY,
@@ -99,8 +144,8 @@ def main(
     opts_table.add_row("Organize albums (-a)", "Yes" if albums else "No")
     console.print(Panel(opts_table, border_style="cyan"))
 
-    if api_key is None:
-        api_key = os.getenv("ACOUSTID_API_KEY")
+    if not files:
+        return
 
     processor = AudioProcessor(
         directory=str(directory),
@@ -108,18 +153,6 @@ def main(
         recursive=recursive,
         use_shazam=shazam,
     )
-    with console.status("Searching for audio files...", spinner="line"):
-        files = get_audio_files(directory=directory, recursive=recursive)
-
-    if not files:
-        console.print(
-            Panel.fit(
-                "No audio files found in the selected directory.",
-                border_style="yellow",
-                title="Warning",
-            )
-        )
-        raise typer.Exit(1)
 
     summary_table = Table(box=box.MINIMAL_DOUBLE_HEAD, show_header=False)
     summary_table.add_column("Item", style="bold green")
