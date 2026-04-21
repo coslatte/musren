@@ -19,14 +19,6 @@ venv/
 env/
 ENV/
 
-
-# Keep repository clean: caches and virtual environments
-# Virtual environment (recommended local name)
-.venv/
-venv/
-env/
-ENV/
-
 # Pytest cache
 .pytest_cache/
 
@@ -70,3 +62,7 @@ pnpm-debug.log*
 # Other common webdev artifacts
 logs/
 *.log
+
+# IDE/editor specific files
+.vscode/
+.idea/
