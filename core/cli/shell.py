@@ -286,13 +286,19 @@ class InteractiveShell:
 
     def _prompt_for_path(self, command_name: str) -> Optional[str]:
         console.print(f"[cyan]Specify path for {command_name}:[/cyan]")
-        console.print("[dim](Enter = current directory, . = current directory, or absolute path)[/dim]")
+        console.print("[dim]Enter = current dir, . = current dir, or absolute path (e.g., C:\\Music, F:\\)[/dim]")
+        console.print("[yellow]Note: Use real filesystem path, NOT 'This PC\\...' style paths from Explorer[/yellow]")
         prompt = f"[bold cyan]{command_name}[/bold cyan]$ "
         console.print(prompt, end="")
         path_input = input().strip()
         
         if not path_input or path_input == ".":
             return str(self.current_dir)
+        
+        if "This PC" in path_input or path_input.startswith("\\"):
+            console.print(f"[red]Invalid path: Use real path like C:\\Music or F:\\[/red]")
+            console.print("[dim]To find real path: Open File Explorer, navigate to folder, right-click → Properties[/dim]")
+            return None
         
         return path_input
 
@@ -306,6 +312,10 @@ class InteractiveShell:
             path = args[0]
             if not path.startswith("--") and Path(path).exists():
                 args = ["--directory", path]
+            elif "This PC" in path or path.startswith("\\"):
+                console.print(f"[red]Invalid path format: {path}[/red]")
+                console.print("[yellow]Use real filesystem path (e.g., C:\\Music, F:\\)[/yellow]")
+                return
         
         import sys
         import os
@@ -344,6 +354,10 @@ class InteractiveShell:
             path = args[0]
             if not path.startswith("--") and Path(path).exists():
                 args = ["--directory", path]
+            elif "This PC" in path or path.startswith("\\"):
+                console.print(f"[red]Invalid path format: {path}[/red]")
+                console.print("[yellow]Use real filesystem path (e.g., C:\\Music, F:\\)[/yellow]")
+                return
         
         import sys
         import os
@@ -369,12 +383,50 @@ class InteractiveShell:
             sys.stdout = old_stdout
             sys.stderr = old_stderr
 
-    def _run_covers(self, args: list) -> None:
+def _run_covers(self, args: list) -> None:
         if not args:
             path = self._prompt_for_path("covers")
             if not path:
                 return
             args = ["--directory", path]
+        else:
+            path = args[0]
+            if not path.startswith("--") and Path(path).exists():
+                args = ["--directory", path]
+            elif "This PC" in path or path.startswith("\\"):
+                console.print(f"[red]Invalid path format: {path}[/red]")
+                console.print("[yellow]Use real filesystem path (e.g., C:\\Music, F:\\)[/yellow]")
+                return
+
+    def _run_recognize(self, args: list) -> None:
+        if not args:
+            path = self._prompt_for_path("recognize")
+            if not path:
+                return
+            args = ["--directory", path]
+        else:
+            path = args[0]
+            if not path.startswith("--") and Path(path).exists():
+                args = ["--directory", path]
+            elif "This PC" in path or path.startswith("\\"):
+                console.print(f"[red]Invalid path format: {path}[/red]")
+                console.print("[yellow]Use real filesystem path (e.g., C:\\Music, F:\\)[/yellow]")
+                return
+
+    def _run_albums(self, args: list) -> None:
+        if not args:
+            path = self._prompt_for_path("albums")
+            if not path:
+                return
+            args = ["--directory", path]
+        else:
+            path = args[0]
+            if not path.startswith("--") and Path(path).exists():
+                args = ["--directory", path]
+            elif "This PC" in path or path.startswith("\\"):
+                console.print(f"[red]Invalid path format: {path}[/red]")
+                console.print("[yellow]Use real filesystem path (e.g., C:\\Music, F:\\)[/yellow]")
+                return
         else:
             path = args[0]
             if not path.startswith("--") and Path(path).exists():
