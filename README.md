@@ -33,32 +33,36 @@ AcoustID recognition requires the `fpcalc` binary.
 
 ## Installation
 
-### Option A: Pre-built wheel (recommended)
+### Option A: One-click install scripts (recommended)
 
-Download the wheel from releases or build it:
+```powershell
+# Windows
+.\install.ps1
+
+# Or build + install manually
+.\build.bat
+```
+
+```bash
+# Linux/Mac
+./install.sh
+```
+
+### Option B: Manual
 
 ```powershell
 # Build wheel
-python setup.py sdist bdist_wheel
+python -m build
 
 # Install
 pip install dist/musren-1.1.0-py3-none-any.whl
 ```
 
-### Option B: Editable install (development)
+### Option C: Editable (development)
 
 ```powershell
 pip install -e .
 ```
-
-### Option C: Using uv
-
-```powershell
-uv sync
-uv pip install -e .
-```
-
-### Optional extras
 
 Some features may require optional dependencies:
 
