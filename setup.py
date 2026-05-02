@@ -1,15 +1,9 @@
-from setuptools import setup, find_packages
-from setuptools.command import egg_info
-
-with open("CLI.md", "r", encoding="utf-8") as f:
-    long_description = f.read()
+from setuptools import setup
 
 setup(
     name="musren",
     version="1.1.0",
     description="Music file renamer with metadata, lyrics, covers and recognition",
-    long_description=long_description,
-    long_description_content_type="text/markdown",
     author="cosLatte",
     author_email="gabrielpazruiz02@gmail.com",
     url="https://github.com/coslatte/MusRen",
