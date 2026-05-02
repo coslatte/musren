@@ -40,7 +40,7 @@ setup(
         "python-dotenv>=0.21",
     ],
     extras_require={
-        "recognition": ["pyacoustid>=2.2"],
+        "recognition": ["pyacoustid>=1.0"],
         "lyrics": ["syncedlyrics>=0.9"],
         "musicbrainz": ["musicbrainzngs>=0.6"],
     },
