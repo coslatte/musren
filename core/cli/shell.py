@@ -302,6 +302,10 @@ class InteractiveShell:
             if not path:
                 return
             args = ["--directory", path]
+        else:
+            path = args[0]
+            if not path.startswith("--") and Path(path).exists():
+                args = ["--directory", path]
         
         import sys
         from core.cli.commands.rename import rename_app
@@ -322,6 +326,10 @@ class InteractiveShell:
             if not path:
                 return
             args = ["--directory", path]
+        else:
+            path = args[0]
+            if not path.startswith("--") and Path(path).exists():
+                args = ["--directory", path]
         
         import sys
         from core.cli.commands.lyrics import lyrics_app
@@ -342,6 +350,10 @@ class InteractiveShell:
             if not path:
                 return
             args = ["--directory", path]
+        else:
+            path = args[0]
+            if not path.startswith("--") and Path(path).exists():
+                args = ["--directory", path]
         
         import sys
         from core.cli.commands.covers import covers_app
@@ -362,6 +374,10 @@ class InteractiveShell:
             if not path:
                 return
             args = ["--directory", path]
+        else:
+            path = args[0]
+            if not path.startswith("--") and Path(path).exists():
+                args = ["--directory", path]
         
         import sys
         from core.cli.commands.recognize import recognize_app
@@ -382,6 +398,10 @@ class InteractiveShell:
             if not path:
                 return
             args = ["--directory", path]
+        else:
+            path = args[0]
+            if not path.startswith("--") and Path(path).exists():
+                args = ["--directory", path]
         
         import sys
         from core.cli.commands.albums import albums_app
