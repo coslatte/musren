@@ -1,9 +1,11 @@
 import os
 from pathlib import Path
 
+import traceback
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+from rich.traceback import Traceback
 
 from constants.info import MUSIC_RENAMER_VERSION
 
@@ -41,6 +43,49 @@ class InteractiveShell:
         self.screen_stack = []
         
         self.screens = self._create_screens()
+        
+        try:
+            import readchar
+            self._has_readchar = True
+            self._readchar = readchar
+        except ImportError:
+            self._has_readchar = False
+
+    def _get_input(self, prompt: str) -> str:
+        if self._has_readchar:
+            return self._get_input_with_readchar(prompt)
+        return input(prompt)
+
+    def _get_input_with_readchar(self, prompt: str) -> str:
+        import sys
+        result = []
+        sys.stdout.write(prompt)
+        sys.stdout.flush()
+        
+        while True:
+            try:
+                key = self._readchar.readkey()
+            except EOFError:
+                return ""
+            except KeyboardInterrupt:
+                return ""
+            
+            if key == "\n" or key == "\r":
+                sys.stdout.write("\n")
+                break
+            elif key == "\x7f":
+                if result:
+                    result.pop()
+                    sys.stdout.write("\b \b")
+                    sys.stdout.flush()
+            elif key == "\x1b":
+                return "ESC"
+            else:
+                result.append(key)
+                sys.stdout.write(key)
+                sys.stdout.flush()
+        
+        return "".join(result)
 
     def _create_screens(self) -> dict:
         return {
@@ -63,10 +108,7 @@ class InteractiveShell:
         }
 
     def print_banner(self) -> None:
-        console.print()
-        console.rule("[bold cyan]MusRen CLI[/bold cyan]", style="cyan")
-        console.print(f"[dim]Version {MUSIC_RENAMER_VERSION}[/dim]")
-        console.print()
+        console.print(f"[bold cyan]MusRen[/bold cyan] v{MUSIC_RENAMER_VERSION}")
 
     def show_main_menu(self) -> None:
         screen = self.screens["main"]
@@ -75,7 +117,12 @@ class InteractiveShell:
         panel_items = []
         for item in screen.items:
             panel_items.append(f"  [yellow]{item.id}.[/yellow] [cyan]{item.name:<12}[/cyan] {item.description}")
-        panel_items.extend(["", "[dim]Type number, command, or /exit to quit[/dim]"])
+        help_text = "[dim]Commands: number, command, /exit, /help, /clear, /cd, /pwd[/dim]"
+        if self._has_readchar:
+            help_text += " [dim]| ESC, b = back to menu[/dim]"
+        else:
+            help_text += " [dim]| b = back to menu[/dim]"
+        panel_items.extend(["", help_text])
         
         console.print(Panel(
             "\n".join(panel_items),
@@ -141,6 +188,7 @@ class InteractiveShell:
 
     def _handle_error(self, error: Exception, command: str = "") -> None:
         error_msg = str(error)
+        error_type = type(error).__name__
         
         error_messages = {
             "No audio files found": "[yellow]No audio files found in the specified directory.[/yellow]\n[dim]Try a different directory or add audio files first.[/dim]",
@@ -148,38 +196,75 @@ class InteractiveShell:
             "API key": "[yellow]API key not configured.[/yellow]\n[dim]Run: config set acoustid YOUR_KEY[/dim]",
             "Permission denied": "[red]Permission denied.[/red]\n[dim]Check file permissions or try a different directory.[/dim]",
             "Not found": "[red]Directory or file not found.[/red]\n[dim]Check the path and try again.[/dim]",
+            "FileNotFoundError": "[red]File not found.[/red]\n[dim]Check if the file or directory exists.[/dim]",
+            "IsADirectoryError": "[red]Expected a file, got a directory.[/red]\n[dim]Provide a file path, not a directory.[/dim]",
         }
         
+        matched = False
         for key, msg in error_messages.items():
             if key.lower() in error_msg.lower():
                 console.print(Panel(msg, title="[bold red]Error[/bold red]", border_style="red"))
-                return
+                matched = True
+                break
         
-        console.print(Panel(
-            f"[red]Error running: {command}[/red]\n[yellow]{error_msg}[/yellow]",
-            title="[bold red]Error[/bold red]",
-            border_style="red",
-        ))
+        if not matched:
+            console.print(Panel(
+                f"[bold red]Error: {error_type}[/bold red]\n[yellow]{error_msg}[/yellow]",
+                title="[bold red]Error[/bold red]",
+                border_style="red",
+            ))
+        
+        console.print(f"[dim]Hint: Use --help for more info. Type /help for menu.[/dim]")
 
     def _run_rename(self, args: list) -> None:
-        from core.cli.commands.rename import rename_run
-        rename_run.callback(*args)
+        from click.testing import CliRunner
+        from core.cli.commands.rename import rename_app
+        runner = CliRunner()
+        result = runner.invoke(rename_app, ["run"] + args, catch_exceptions=False)
+        if result.exit_code != 0:
+            console.print(f"[red]Command exited with code {result.exit_code}[/red]")
+            if result.output:
+                console.print(result.output)
 
     def _run_lyrics(self, args: list) -> None:
-        from core.cli.commands.lyrics import lyrics_run
-        lyrics_run.callback(*args)
+        from click.testing import CliRunner
+        from core.cli.commands.lyrics import lyrics_app
+        runner = CliRunner()
+        result = runner.invoke(lyrics_app, ["run"] + args, catch_exceptions=False)
+        if result.exit_code != 0:
+            console.print(f"[red]Command exited with code {result.exit_code}[/red]")
+            if result.output:
+                console.print(result.output)
 
     def _run_covers(self, args: list) -> None:
-        from core.cli.commands.covers import covers_run
-        covers_run.callback(*args)
+        from click.testing import CliRunner
+        from core.cli.commands.covers import covers_app
+        runner = CliRunner()
+        result = runner.invoke(covers_app, ["run"] + args, catch_exceptions=False)
+        if result.exit_code != 0:
+            console.print(f"[red]Command exited with code {result.exit_code}[/red]")
+            if result.output:
+                console.print(result.output)
 
     def _run_recognize(self, args: list) -> None:
-        from core.cli.commands.recognize import recognize_run
-        recognize_run.callback(*args)
+        from click.testing import CliRunner
+        from core.cli.commands.recognize import recognize_app
+        runner = CliRunner()
+        result = runner.invoke(recognize_app, ["run"] + args, catch_exceptions=False)
+        if result.exit_code != 0:
+            console.print(f"[red]Command exited with code {result.exit_code}[/red]")
+            if result.output:
+                console.print(result.output)
 
     def _run_albums(self, args: list) -> None:
-        from core.cli.commands.albums import albums_run
-        albums_run.callback(*args)
+        from click.testing import CliRunner
+        from core.cli.commands.albums import albums_app
+        runner = CliRunner()
+        result = runner.invoke(albums_app, ["run"] + args, catch_exceptions=False)
+        if result.exit_code != 0:
+            console.print(f"[red]Command exited with code {result.exit_code}[/red]")
+            if result.output:
+                console.print(result.output)
 
     def _run_config(self, args: list) -> None:
         from core.cli.commands.config_shell import config_list_shell, config_set_shell, config_get_shell, config_delete_shell
@@ -198,11 +283,9 @@ class InteractiveShell:
     def run(self) -> None:
         self.print_banner()
         
-        welcome = """[bold cyan]Welcome to MusRen![/bold cyan]
+        welcome = """[bold cyan]MusRen[/bold cyan] - Music file organizer
 
-[dim]Manage your music files with ease.[/dim]
-
-[yellow]Navigate using numbers (1-7) or type commands.[/yellow]"""
+[dim]Version {version}[/dim]""".format(version=MUSIC_RENAMER_VERSION)
         console.print(Panel(welcome, border_style="cyan"))
         
         self.show_main_menu()
@@ -210,8 +293,17 @@ class InteractiveShell:
         while self.running:
             try:
                 prompt = f"[bold cyan]MusRen[/bold cyan] [yellow]{self.current_dir.name}[/yellow]$ "
-                console.print(prompt, end="")
-                choice = input().strip()
+                if self._has_readchar:
+                    console.print(prompt, end="")
+                    choice = self._get_input("").strip()
+                else:
+                    console.print(prompt, end="")
+                    choice = input().strip()
+                
+                if choice == "ESC":
+                    console.print("[cyan]Returning to main menu...[/cyan]")
+                    self.show_main_menu()
+                    continue
 
                 if not choice:
                     continue
@@ -221,6 +313,10 @@ class InteractiveShell:
                 if choice.lower() in ("/exit", "/quit", "exit", "quit", "q", "x"):
                     console.print("[yellow]Goodbye![/yellow]")
                     break
+                elif choice.lower() in ("b", "back", "backmenu"):
+                    console.print("[cyan]Returning to main menu...[/cyan]")
+                    self.show_main_menu()
+                    continue
                 elif choice.lower() in ("--version", "-v"):
                     console.print(f"[bold cyan]MusRen[/bold cyan] v{MUSIC_RENAMER_VERSION}")
                 elif choice.lower() in ("/help", "?"):
