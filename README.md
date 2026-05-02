@@ -33,48 +33,38 @@ AcoustID recognition requires the `fpcalc` binary.
 
 ## Installation
 
-MusRen can be used directly from source or installed as an editable package.
-
-### Option A: Using Python + pip
-
-Create and activate a virtual environment:
+### Option A: One-click install scripts (recommended)
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+# Windows
+.\install.ps1
+
+# Or build + install manually
+.\build.bat
 ```
 
-Install dependencies:
+```bash
+# Linux/Mac
+./install.sh
+```
+
+### Option B: Manual
 
 ```powershell
-python -m pip install -r requirements.txt
+# Build wheel
+python -m build
+
+# Install
+pip install dist/musren-1.1.0-py3-none-any.whl
 ```
 
-Install the project (so the `music-renamer` command is available):
+### Option C: Editable (development)
 
 ```powershell
-python -m pip install -e .
+pip install -e .
 ```
 
-### Option B: Using uv
-
-Create and activate an environment (uv manages the venv for you):
-
-Install dependencies:
-
-```powershell
-uv sync
-```
-
-Install the project (editable):
-
-```powershell
-uv pip install -e .
-```
-
-### Optional extras
-
-Some features may require optional dependencies. You can install them via extras:
+Some features may require optional dependencies:
 
 ```powershell
 # AcoustID recognition
@@ -107,83 +97,50 @@ $env:ACOUSTID_API_KEY="your_key_here"
 
 ## Usage
 
-MusRen uses a Typer-based CLI.
+MusRen provides an interactive CLI and command-line mode.
 
-Show help:
+### Interactive mode
+
+```powershell
+musren
+```
+
+Shows a menu with options 1-7 for rename, lyrics, covers, recognize, albums, config, help.
+
+### Command-line mode
+
+Run a command directly:
+
+```powershell
+musren rename
+musren lyrics
+musren covers
+```
+
+### Version check
+
+```powershell
+musren --version
+```
+
+### Legacy mode (direct Python)
 
 ```powershell
 python app.py --help
-```
-
-If installed, you can also use:
-
-```powershell
-music-renamer --help
-```
-
-### Common commands
-
-Process the current folder (interactive prompts):
-
-```powershell
-python app.py
-```
-
-Pick a directory:
-
-```powershell
-python app.py -d "D:\Music"
-```
-
-Scan subfolders:
-
-```powershell
-python app.py -d "D:\Music" -R
-```
-
-Fetch and embed synchronized lyrics:
-
-```powershell
-python app.py -d "D:\Music" -l
-```
-
-Add album covers:
-
-```powershell
-python app.py -d "D:\Music" -c
-```
-
-Use recognition with AcoustID (requires `fpcalc`):
-
-```powershell
-python app.py -d "D:\Music" -r -k "YOUR_ACOUSTID_KEY"
-```
-
-Use Shazam instead of AcoustID (Recommended):
-
-```powershell
-python app.py -d "D:\Music" -s
-```
-
-Run without confirmations:
-
-```powershell
-python app.py -d "D:\Music" -y
 ```
 
 ## Project layout
 
 Key files and folders:
 
-```dir
-app.py                  # main entrypoint (Typer)
+```
+app.py                  # main entrypoint
 core/                   # processing logic
-    audio_processor.py    # rename/metadata/lyrics/covers orchestration
-    artwork.py            # cover art fetch + embed
-    install_covers.py     # cover-install helper
-    shazam_processor.py   # optional Shazam integration
-utils/                  # helpers (dependency checks, filesystem tools)
-tests/                  # lightweight tests
+core/cli/               # CLI (shell interface)
+core/cli/commands/      # menu commands
+constants/            # settings and version
+utils/                 # helpers
+tests/                 # tests
 ```
 
 ## Troubleshooting

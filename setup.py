@@ -7,6 +7,7 @@ setup(
     author="cosLatte",
     author_email="gabrielpazruiz02@gmail.com",
     url="https://github.com/coslatte/MusRen",
+    py_modules=["app"],
     packages=[
         "constants",
         "core", 
