@@ -129,7 +129,8 @@ class InteractiveShell:
             "\n".join(panel_items),
             title=f"[bold cyan]{screen.title}[/bold cyan]",
             border_style="cyan",
-            expand=False,
+            expand=True,
+            padding=(0, 2),
         ))
         console.print()
 
@@ -356,7 +357,7 @@ class InteractiveShell:
         welcome = """[bold cyan]MusRen[/bold cyan] - Music file organizer
 
 [dim]Version {version}[/dim]""".format(version=MUSIC_RENAMER_VERSION)
-        console.print(Panel(welcome, border_style="cyan"))
+        console.print(Panel(welcome, border_style="cyan", expand=True, padding=(0, 2)))
         
         self.show_main_menu()
 
