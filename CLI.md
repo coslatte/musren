@@ -19,8 +19,8 @@ pip install musren
 pip install musren[recognition,lyrics]
 
 # Desarrollo
-git clone https://github.com/coslatte/MusRen.git
-cd MusRen
+git clone https://github.com/coslatte/musren.git
+cd musren
 pip install -e .
 ```
 

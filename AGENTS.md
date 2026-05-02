@@ -1,6 +1,6 @@
 # AGENTS.md — Agent & Contributor Guide
 
-This document helps contributors and automated coding agents work effectively in this repository (MusRen). It describes the code structure, development workflow, and conventions to keep edits safe, reviewable, and testable.
+This document helps contributors and automated coding agents work effectively in this repository (musren). It describes the code structure, development workflow, and conventions to keep edits safe, reviewable, and testable.
 
 ## Project overview
 
