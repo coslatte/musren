@@ -97,7 +97,7 @@ class InteractiveShell:
                 MenuItem(4, "Recognize", "Recognize audio using AcoustID/Shazam", "recognize"),
                 MenuItem(5, "Albums", "Organize files into album folders", "albums"),
                 MenuItem(6, "Config", "Manage API keys and settings", "config"),
-                MenuItem(7, "Help", "Show available commands", "/help"),
+                MenuItem(7, "Help", "Show help and usage guide", "help"),
             ]),
             "config": Screen("Configuration", [
                 MenuItem(1, "List", "Show all API keys", "config list"),
@@ -133,7 +133,54 @@ class InteractiveShell:
             padding=(0, 2),
         ))
         console.print()
+    
+    def show_help(self) -> None:
+        help_text = """[bold cyan]Available Commands[/bold cyan]
 
+[yellow]Main Operations:[/yellow]
+  [cyan]1. Rename[/cyan]      - Rename audio files based on metadata
+  [cyan]2. Lyrics[/cyan]      - Search and embed synchronized lyrics
+  [cyan]3. Covers[/cyan]      - Add album covers to audio files
+  [cyan]4. Recognize[/cyan]    - Recognize audio using AcoustID/Shazam
+  [cyan]5. Albums[/cyan]      - Organize files into album folders
+  [cyan]6. Config[/cyan]      - Manage API keys and settings
+  [cyan]7. Help[/cyan]        - Show this help guide
+
+[yellow]Global Commands:[/yellow]
+  [cyan]/help, ?[/cyan]       - Show this help
+  [cyan]/exit, q[/cyan]       - Exit the application
+  [cyan]/clear[/cyan]        - Clear the screen
+  [cyan]/cd <path>[/cyan]    - Change directory
+  [cyan]/pwd[/cyan]          - Show current directory
+  [cyan]/version, -v[/cyan]   - Show version
+  [cyan]b, back[/cyan]       - Return to main menu
+
+[yellow]Usage Examples:[/yellow]
+  [dim]# Rename files in current directory[/dim]
+  [dim]  1[/dim]
+  [dim]  rename[/dim]
+  [dim]# Rename files in specific directory[/dim]
+  [dim]  1 /path/to/music[/dim]
+  [dim]  rename C:\\Music[/dim]
+  [dim]# Set AcoustID API key[/dim]
+  [dim]  6[/dim]
+  [dim]  config set acoustid YOUR_KEY[/dim]
+  [dim]# List all settings[/dim]
+  [dim]  config list[/dim]
+
+[yellow]Path Shortcuts:[/yellow]
+  [dim]Enter or .[/dim]   - Use current directory
+  [dim]/path/to/dir[/dim] - Use specified directory"""
+        
+        console.print(Panel(
+            help_text,
+            title="[bold cyan]MusRen Help[/bold cyan]",
+            border_style="cyan",
+            expand=True,
+            padding=(0, 2),
+        ))
+        console.print()
+    
     def show_config_menu(self) -> None:
         screen = self.screens["config"]
         
@@ -183,6 +230,8 @@ class InteractiveShell:
                 self._run_albums(args)
             elif cmd_name in ("config", "cfg"):
                 self._run_config(args)
+            elif cmd_name in ("help", "?"):
+                self.show_help()
             else:
                 console.print(f"[red]Unknown command: {cmd_name}[/red]")
             return True
@@ -397,8 +446,8 @@ class InteractiveShell:
                     continue
                 elif choice.lower() in ("--version", "-v"):
                     console.print(f"[bold cyan]MusRen[/bold cyan] v{MUSIC_RENAMER_VERSION}")
-                elif choice.lower() in ("/help", "?"):
-                    self.show_main_menu()
+                elif choice.lower() in ("/help", "?", "help"):
+                    self.show_help()
                 elif choice.lower() == "/clear":
                     console.clear()
                     self.print_banner()
