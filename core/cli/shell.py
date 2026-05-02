@@ -159,9 +159,9 @@ class InteractiveShell:
             pass
         return input_str
 
-    def run_command(self, input_line: str) -> None:
+    def run_command(self, input_line: str) -> bool:
         if not input_line.strip():
-            return
+            return False
         
         parts = input_line.strip().split()
         cmd_name = parts[0].lower()
@@ -184,8 +184,10 @@ class InteractiveShell:
                 self._run_config(args)
             else:
                 console.print(f"[red]Unknown command: {cmd_name}[/red]")
+            return True
         except Exception as e:
             self._handle_error(e, cmd_name)
+            return False
 
     def _handle_error(self, error: Exception, command: str = "") -> None:
         error_msg = str(error)
@@ -199,23 +201,27 @@ class InteractiveShell:
             "Not found": "[red]Directory or file not found.[/red]\n[dim]Check the path and try again.[/dim]",
             "FileNotFoundError": "[red]File not found.[/red]\n[dim]Check if the file or directory exists.[/dim]",
             "IsADirectoryError": "[red]Expected a file, got a directory.[/red]\n[dim]Provide a file path, not a directory.[/dim]",
+            "AttributeError": "[red]Internal error in command execution.[/red]\n[dim]Try specifying arguments explicitly. Use: command --help[/dim]",
+            "TypeError": "[red]Invalid argument type.[/red]\n[dim]Check the command syntax. Use: command --help[/dim]",
+            "ValueError": "[red]Invalid value provided.[/red]\n[dim]Check the arguments and try again.[/dim]",
         }
         
         matched = False
         for key, msg in error_messages.items():
-            if key.lower() in error_msg.lower():
+            if key.lower() in error_msg.lower() or key == error_type:
                 console.print(Panel(msg, title="[bold red]Error[/bold red]", border_style="red"))
                 matched = True
                 break
         
         if not matched:
             console.print(Panel(
-                f"[bold red]Error: {error_type}[/bold red]\n[yellow]{error_msg}[/yellow]",
+                f"[red]Error in {command}[/red]\n[yellow]{error_msg}[/yellow]",
                 title="[bold red]Error[/bold red]",
                 border_style="red",
             ))
         
-        console.print(f"[dim]Hint: Use --help for more info. Type /help for menu.[/dim]")
+        console.print(f"[dim]Hint: Use /help for menu or b to go back.[/dim]")
+        self.show_main_menu()
 
     def _normalize_path_args(self, args: list) -> list:
         normalized = []
@@ -407,10 +413,12 @@ class InteractiveShell:
                         self.show_main_menu()
                     else:
                         self.run_command(result)
+                        self.show_main_menu()
                 elif choice.startswith("/"):
                     console.print(f"[red]Unknown: {choice}[/red]")
                 else:
                     self.run_command(choice)
+                    self.show_main_menu()
 
                 console.print()
 
@@ -421,6 +429,7 @@ class InteractiveShell:
             except Exception as e:
                 console.print(Panel(str(e), title="[bold red]Error[/bold red]", border_style="red"))
                 console.print()
+                self.show_main_menu()
 
 
 def cli() -> None:
