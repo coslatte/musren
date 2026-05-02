@@ -301,13 +301,12 @@ class InteractiveShell:
             path = self._prompt_for_path("rename")
             if not path:
                 return
-            args = [path]
+            args = ["--directory", path]
         
         import sys
         from core.cli.commands.rename import rename_app
-        normalized_args = self._normalize_path_args(args)
         old_argv = sys.argv
-        sys.argv = ["musren"] + normalized_args
+        sys.argv = ["musren"] + args
         try:
             rename_app()
         except SystemExit:
@@ -322,13 +321,12 @@ class InteractiveShell:
             path = self._prompt_for_path("lyrics")
             if not path:
                 return
-            args = [path]
+            args = ["--directory", path]
         
         import sys
         from core.cli.commands.lyrics import lyrics_app
-        normalized_args = self._normalize_path_args(args)
         old_argv = sys.argv
-        sys.argv = ["musren"] + normalized_args
+        sys.argv = ["musren"] + args
         try:
             lyrics_app()
         except SystemExit:
@@ -343,13 +341,12 @@ class InteractiveShell:
             path = self._prompt_for_path("covers")
             if not path:
                 return
-            args = [path]
+            args = ["--directory", path]
         
         import sys
         from core.cli.commands.covers import covers_app
-        normalized_args = self._normalize_path_args(args)
         old_argv = sys.argv
-        sys.argv = ["musren"] + normalized_args
+        sys.argv = ["musren"] + args
         try:
             covers_app()
         except SystemExit:
@@ -364,13 +361,12 @@ class InteractiveShell:
             path = self._prompt_for_path("recognize")
             if not path:
                 return
-            args = [path]
+            args = ["--directory", path]
         
         import sys
         from core.cli.commands.recognize import recognize_app
-        normalized_args = self._normalize_path_args(args)
         old_argv = sys.argv
-        sys.argv = ["musren"] + normalized_args
+        sys.argv = ["musren"] + args
         try:
             recognize_app()
         except SystemExit:
@@ -385,13 +381,12 @@ class InteractiveShell:
             path = self._prompt_for_path("albums")
             if not path:
                 return
-            args = [path]
+            args = ["--directory", path]
         
         import sys
         from core.cli.commands.albums import albums_app
-        normalized_args = self._normalize_path_args(args)
         old_argv = sys.argv
-        sys.argv = ["musren"] + normalized_args
+        sys.argv = ["musren"] + args
         try:
             albums_app()
         except SystemExit:
