@@ -52,5 +52,4 @@ jobs:
           pip install dist/musren-*.whl
           
       - name: Check CLI
-        run: |
-          musren --version || true
+        run: musren --version || true
