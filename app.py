@@ -1,10 +1,16 @@
 import sys
 import warnings
 
-warnings.filterwarnings("ignore", category=SyntaxWarning, module="pydub")
+from constants.info import MUSIC_RENAMER_VERSION
 
 
 def main(interactive: bool = True) -> None:
+    if "--version" in sys.argv or "-v" in sys.argv:
+        print(f"musren {MUSIC_RENAMER_VERSION}")
+        return
+
+    warnings.filterwarnings("ignore", category=SyntaxWarning, module="pydub")
+
     if interactive and len(sys.argv) == 1:
         from core.cli.shell import cli as musren_shell
         musren_shell()
