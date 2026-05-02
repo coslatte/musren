@@ -1,46 +1,16 @@
-# MusRen (Music Renamer)
+# musren (Music Renamer)
 
-MusRen is a Python CLI tool to organize your local music library by:
+musren is a Python CLI tool to organize your local music library.
 
-- Renaming files using metadata (artist/title/album/track, etc.)
-- Optionally recognizing tracks (AcoustID + Chromaprint `fpcalc`, or Shazam)
-- Optionally fetching and embedding album artwork
-- Optionally fetching and embedding synchronized lyrics (LRC)
-
-It is designed to be used on folders of audio files (MP3, FLAC, M4A).
-
-## How it works
-
-1. Scans a directory (optionally recursively) for audio files.
-2. Reads existing metadata.
-3. Optionally recognizes the track and enriches metadata.
-4. Optionally embeds lyrics and/or cover art.
-5. Renames files based on the resulting metadata.
-
-## Requirements
-
-- Python 3.9+ (recommended)
-- Optional for AcoustID recognition: Chromaprint `fpcalc`
-
-### Chromaprint (`fpcalc`) for recognition
-
-AcoustID recognition requires the `fpcalc` binary.
-
-- Windows: download `fpcalc.exe` from Chromaprint releases and add it to `PATH`.
-  - MusRen also checks common local locations (project root and `utils/`) if needed.
-- macOS: `brew install chromaprint`
-- Linux (Debian/Ubuntu): `sudo apt-get install libchromaprint-tools`
-
-## Installation
-
-### Option A: One-click install scripts (recommended)
+## Quick Install
 
 ```powershell
 # Windows
 .\install.ps1
 
-# Or build + install manually
-.\build.bat
+# Or build manually
+python -m build
+pip install dist/musren-*.whl
 ```
 
 ```bash
@@ -48,125 +18,95 @@ AcoustID recognition requires the `fpcalc` binary.
 ./install.sh
 ```
 
-### Option B: Manual
+## What is musren?
 
-```powershell
-# Build wheel
-python -m build
+musren organizes your music by:
 
-# Install
-pip install dist/musren-1.1.0-py3-none-any.whl
-```
+- **Rename** files using metadata (artist/title/album/track)
+- **Recognize** tracks via AcoustID or Shazam
+- **Embed** album artwork and synchronized lyrics (LRC)
+- **Organize** files into album folders
 
-### Option C: Editable (development)
+## How it works
 
-```powershell
-pip install -e .
-```
+1. Scans a directory (optionally recursive) for audio files
+2. Reads existing metadata
+3. Optionally recognizes and enriches metadata
+4. Optionally embeds lyrics and/or cover art
+5. Renames files based on the metadata
 
-Some features may require optional dependencies:
+## Requirements
 
-```powershell
-# AcoustID recognition
-python -m pip install -e ".[recognition]"
+- Python 3.9+
+- Optional for recognition: Chromaprint `fpcalc`
 
-# Synchronized lyrics
-python -m pip install -e ".[lyrics]"
+### Install fpcalc (for AcoustID)
 
-# MusicBrainz support (improved lookup)
-python -m pip install -e ".[musicbrainz]"
-```
-
-With uv:
-
-```powershell
-uv pip install -e ".[recognition]"
-uv pip install -e ".[lyrics]"
-uv pip install -e ".[musicbrainz]"
-```
-
-## Configuration
-
-### AcoustID API key
-
-You can pass an API key with `--api-key/-k` or set it via environment variable:
-
-```powershell
-$env:ACOUSTID_API_KEY="your_key_here"
-```
+- Windows: download `fpcalc.exe` from Chromaprint releases
+- macOS: `brew install chromaprint`
+- Linux: `sudo apt-get install libchromaprint-tools`
 
 ## Usage
 
-MusRen provides an interactive CLI and command-line mode.
-
-### Interactive mode
-
 ```powershell
+# Interactive mode
+python app.py
+
+# Or install as command
+pip install -e .
 musren
 ```
 
-Shows a menu with options 1-7 for rename, lyrics, covers, recognize, albums, config, help.
+### Interactive Menu
+
+Run `python app.py` and select:
+- 1. Rename - rename files based on metadata
+- 2. Lyrics - fetch and embed lyrics
+- 3. Covers - add album artwork
+- 4. Recognize - audio recognition
+- 5. Albums - organize by folders
+- 6. Config - API key settings
+- 7. Help - show guide
 
 ### Command-line mode
 
-Run a command directly:
-
 ```powershell
-musren rename
-musren lyrics
-musren covers
+musren rename --directory C:\Music
+musren lyrics --directory C:\Music -R
+musren covers --directory C:\Music
 ```
 
-### Version check
+### Version
 
 ```powershell
 musren --version
 ```
 
-### Legacy mode (direct Python)
+## Configuration
+
+Set AcoustID API key:
 
 ```powershell
-python app.py --help
+$env:ACOUSTID_API_KEY="your_key"
+# or in musren shell:
+config set acoustid YOUR_KEY
 ```
 
-## Project layout
+## Optional Features
 
-Key files and folders:
-
+```powershell
+pip install -e ".[recognition]"  # AcoustID
+pip install -e ".[lyrics]"       # Lyrics
+pip install -e ".[musicbrainz]"  # MusicBrainz
 ```
-app.py                  # main entrypoint
-core/                   # processing logic
-core/cli/               # CLI (shell interface)
-core/cli/commands/      # menu commands
-constants/            # settings and version
-utils/                 # helpers
-tests/                 # tests
-```
-
-## Troubleshooting
-
-- Recognition fails / `fpcalc` missing: install Chromaprint and ensure `fpcalc` is in `PATH`.
-- Optional-feature import errors (lyrics/recognition/musicbrainz): install the matching extras.
 
 ## Tests
-
-With pip:
 
 ```powershell
 python -m pytest -q
 ```
 
-With uv:
+## Troubleshooting
 
-```powershell
-uv run pytest -q
-```
-
-## Type checking (optional)
-
-This repo includes a Pyright configuration in `pyproject.toml`. To run it:
-
-```powershell
-python -m pip install pyright
-pyright
-```
+- Recognition fails: install Chromaprint and ensure `fpcalc` is in PATH
+- Import errors: install matching extras (`.[recognition]`, `.[lyrics]`, etc.)
