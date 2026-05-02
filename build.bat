@@ -1,7 +1,7 @@
 @echo off
-REM MusRen Build Script
+REM musren Build Script
 
-echo Building MusRen...
+echo Building musren...
 python -m build
 
 for %%i in (dist\musren-*.whl) do (
@@ -10,4 +10,4 @@ for %%i in (dist\musren-*.whl) do (
 )
 
 echo.
-echo MusRen installed! Run 'musren' to start.
+echo musren installed! Run 'python app.py' to start.

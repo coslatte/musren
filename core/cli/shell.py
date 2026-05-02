@@ -90,7 +90,7 @@ class InteractiveShell:
 
     def _create_screens(self) -> dict:
         return {
-            "main": Screen("MusRen - Main Menu", [
+            "main": Screen("musren - Main Menu", [
                 MenuItem(1, "Rename", "Rename audio files based on metadata", "rename"),
                 MenuItem(2, "Lyrics", "Search and embed synchronized lyrics", "lyrics"),
                 MenuItem(3, "Covers", "Add album covers to audio files", "covers"),
@@ -109,7 +109,7 @@ class InteractiveShell:
         }
 
     def print_banner(self) -> None:
-        console.print(f"[bold cyan]MusRen[/bold cyan] v{MUSIC_RENAMER_VERSION}")
+        console.print(f"[bold cyan]musren[/bold cyan] v{MUSIC_RENAMER_VERSION}")
 
     def show_main_menu(self) -> None:
         screen = self.screens["main"]
@@ -174,7 +174,7 @@ class InteractiveShell:
         
         console.print(Panel(
             help_text,
-            title="[bold cyan]MusRen Help[/bold cyan]",
+            title="[bold cyan]musren Help[/bold cyan]",
             border_style="cyan",
             expand=True,
             padding=(0, 2),
@@ -453,7 +453,7 @@ class InteractiveShell:
     def run(self) -> None:
         self.print_banner()
         
-        welcome = """[bold cyan]MusRen[/bold cyan] - Music file organizer
+        welcome = """[bold cyan]musren[/bold cyan] - Music file organizer
 
 [dim]Version {version}[/dim]""".format(version=MUSIC_RENAMER_VERSION)
         console.print(Panel(welcome, border_style="cyan", expand=True, padding=(0, 2)))
@@ -462,7 +462,7 @@ class InteractiveShell:
 
         while self.running:
             try:
-                prompt = f"[bold cyan]MusRen[/bold cyan] [yellow]{self.current_dir.name}[/yellow]$ "
+                prompt = f"[bold cyan]musren[/bold cyan] [yellow]{self.current_dir.name}[/yellow]$ "
                 if self._has_readchar:
                     console.print(prompt, end="")
                     choice = self._get_input("").strip()
@@ -488,7 +488,7 @@ class InteractiveShell:
                     self.show_main_menu()
                     continue
                 elif choice.lower() in ("--version", "-v"):
-                    console.print(f"[bold cyan]MusRen[/bold cyan] v{MUSIC_RENAMER_VERSION}")
+                    console.print(f"[bold cyan]musren[/bold cyan] v{MUSIC_RENAMER_VERSION}")
                 elif choice.lower() in ("/help", "?", "help"):
                     self.show_help()
                 elif choice.lower() == "/clear":

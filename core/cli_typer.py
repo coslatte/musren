@@ -109,7 +109,7 @@ def main(
         help="Organize files into album folders after processing",
     ),
 ):
-    console.rule("[bold cyan]MusRen[/bold cyan]")
+    console.rule("[bold cyan]musren[/bold cyan]")
     with console.status("Checking dependencies...", spinner="dots"):
         if not check_dependencies(use_recognition=recognition):
             console.print(

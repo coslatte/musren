@@ -1,5 +1,5 @@
 #!/bin/bash
-# MusRen Installer
+# musren Installer
 # Run: ./install.sh [install|uninstall|dev]
 
 set -e
@@ -12,7 +12,7 @@ check_python() {
 }
 
 install() {
-    echo "Building MusRen..."
+    echo "Building musren..."
     python -m build
 
     wheel=$(ls dist/musren-*.whl | head -1)
@@ -23,13 +23,13 @@ install() {
     
     echo "Installing $wheel..."
     pip install "$wheel"
-    echo "[OK] MusRen installed! Run: python app.py"
+    echo "[OK] musren installed! Run: python app.py"
 }
 
 uninstall() {
-    echo "Uninstalling MusRen..."
+    echo "Uninstalling musren..."
     pip uninstall musren -y || true
-    echo "[OK] MusRen uninstalled."
+    echo "[OK] musren uninstalled."
 }
 
 dev() {

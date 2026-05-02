@@ -46,9 +46,9 @@ def main(
         help="Show version and exit",
     ),
 ) -> None:
-    """MusRen - Music file renamer based on metadata."""
+    """musren - Music file renamer based on metadata."""
     if version:
-        console.print(f"[bold cyan]MusRen[/bold cyan] v{MUSIC_RENAMER_VERSION}")
+        console.print(f"[bold cyan]musren[/bold cyan] v{MUSIC_RENAMER_VERSION}")
         raise typer.Exit(0)
 
 

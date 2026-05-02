@@ -1,8 +1,8 @@
-# MusRen CLI - Documentación
+# musren CLI - Documentación
 
 ## Introducción
 
-MusRen es una herramienta de línea de comandos para gestionar archivos de música:
+musren es una herramienta de línea de comandos para gestionar archivos de música:
 - Renombrar archivos basándose en metadatos
 - Buscar y embeber letras sincronizadas
 - Añadir portadas de álbum

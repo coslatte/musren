@@ -1,4 +1,4 @@
-# MusRen Installer
+# musren Installer
 # Run: .\install.ps1 [-Dev] [-Uninstall]
 
 param(
@@ -26,8 +26,8 @@ function Test-Pip {
     }
 }
 
-function Install-MusRen {
-    Write-Host "Building MusRen..." -ForegroundColor Cyan
+function Install-musren {
+    Write-Host "Building musren..." -ForegroundColor Cyan
 
     python -m build
 
@@ -40,25 +40,25 @@ function Install-MusRen {
     Write-Host "Installing $($wheel.Name)..." -ForegroundColor Cyan
     pip install $wheel.FullName
 
-    Write-Host "`n[OK] MusRen installed successfully!" -ForegroundColor Green
+    Write-Host "`n[OK] musren installed successfully!" -ForegroundColor Green
     Write-Host "Run: python app.py" -ForegroundColor Yellow
 }
 
-function Uninstall-MusRen {
-    Write-Host "Uninstalling MusRen..." -ForegroundColor Cyan
+function Uninstall-musren {
+    Write-Host "Uninstalling musren..." -ForegroundColor Cyan
     pip uninstall musren -y -ErrorAction SilentlyContinue
-    Write-Host "[OK] MusRen uninstalled." -ForegroundColor Green
+    Write-Host "[OK] musren uninstalled." -ForegroundColor Green
 }
 
 Test-Python
 Test-Pip
 
 if ($Uninstall) {
-    Uninstall-MusRen
+    Uninstall-musren
 } elseif ($Dev) {
     Write-Host "Installing in development mode..." -ForegroundColor Cyan
     pip install -e .
     Write-Host "[OK] Dev mode installed. Run: python app.py" -ForegroundColor Green
 } else {
-    Install-MusRen
+    Install-musren
 }
