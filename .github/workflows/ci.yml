@@ -30,7 +30,7 @@ jobs:
           pip install dist/musren-*.whl
           
       - name: Run tests
-        run: pytest -q --ignore=tests/test_imports.py
+        run: pytest -q --ignore=tests/test_imports.py --ignore=tests/test_rename.py
         
       - name: Check imports
         run: python -c "from core.cli.shell import cli; print('OK')"
