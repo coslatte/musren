@@ -387,6 +387,49 @@ class InteractiveShell:
                 console.print(result.output)
 
     def _run_config(self, args: list) -> None:
+        from rich.console import Console
+        from rich.panel import Panel
+        from rich.prompt import Prompt
+        
+        console = Console()
+        
+        if not args:
+            console.print(Panel(
+                "[bold cyan]Config Options[/bold cyan]\n"
+                "[yellow]1.[/yellow] list  - Show all API keys\n"
+                "[yellow]2.[/yellow] set    - Set an API key\n"
+                "[yellow]3.[/yellow] get    - Get an API key\n"
+                "[yellow]4.[/yellow] delete - Delete an API key\n"
+                "[yellow]b.[/yellow] back  - Return to main menu\n"
+                "[dim]Or type: config <subcommand> <args>[/dim]",
+                title="[bold cyan]Configuration[/bold cyan]",
+                border_style="cyan",
+                expand=True,
+                padding=(0, 2),
+            ))
+            
+            prompt = Prompt.ask(
+                "[cyan]Select config option[/cyan]",
+                choices=["1", "2", "3", "4", "b", "back"],
+                default="1"
+            )
+            
+            if prompt in ("b", "back"):
+                return
+            
+            if prompt == "1":
+                args = ["list"]
+            elif prompt == "2":
+                key = Prompt.ask("[cyan]Enter key name[/cyan]", choices=list({"acoustid"}))
+                value = Prompt.ask("[cyan]Enter value[/cyan]")
+                args = ["set", key, value]
+            elif prompt == "3":
+                key = Prompt.ask("[cyan]Enter key name[/cyan]", choices=list({"acoustid"}))
+                args = ["get", key]
+            elif prompt == "4":
+                key = Prompt.ask("[cyan]Enter key name[/cyan]", choices=list({"acoustid"}))
+                args = ["delete", key]
+        
         try:
             from core.cli.commands.config_shell import config_list_shell, config_set_shell, config_get_shell, config_delete_shell
             
