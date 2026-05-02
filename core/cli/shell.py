@@ -216,11 +216,24 @@ class InteractiveShell:
         
         console.print(f"[dim]Hint: Use --help for more info. Type /help for menu.[/dim]")
 
+    def _normalize_path_args(self, args: list) -> list:
+        normalized = []
+        i = 0
+        while i < len(args):
+            arg = args[i]
+            if arg and not arg.startswith("-") and Path(arg).exists():
+                normalized.extend(["--directory", arg])
+            else:
+                normalized.append(arg)
+            i += 1
+        return normalized
+
     def _run_rename(self, args: list) -> None:
         from click.testing import CliRunner
         from core.cli.commands.rename import rename_app
         runner = CliRunner()
-        result = runner.invoke(rename_app, ["run"] + args, catch_exceptions=False)
+        normalized_args = self._normalize_path_args(args)
+        result = runner.invoke(rename_app, ["run"] + normalized_args, catch_exceptions=False)
         if result.exit_code != 0:
             console.print(f"[red]Command exited with code {result.exit_code}[/red]")
             if result.output:
@@ -230,7 +243,8 @@ class InteractiveShell:
         from click.testing import CliRunner
         from core.cli.commands.lyrics import lyrics_app
         runner = CliRunner()
-        result = runner.invoke(lyrics_app, ["run"] + args, catch_exceptions=False)
+        normalized_args = self._normalize_path_args(args)
+        result = runner.invoke(lyrics_app, ["run"] + normalized_args, catch_exceptions=False)
         if result.exit_code != 0:
             console.print(f"[red]Command exited with code {result.exit_code}[/red]")
             if result.output:
@@ -240,7 +254,8 @@ class InteractiveShell:
         from click.testing import CliRunner
         from core.cli.commands.covers import covers_app
         runner = CliRunner()
-        result = runner.invoke(covers_app, ["run"] + args, catch_exceptions=False)
+        normalized_args = self._normalize_path_args(args)
+        result = runner.invoke(covers_app, ["run"] + normalized_args, catch_exceptions=False)
         if result.exit_code != 0:
             console.print(f"[red]Command exited with code {result.exit_code}[/red]")
             if result.output:
@@ -250,7 +265,8 @@ class InteractiveShell:
         from click.testing import CliRunner
         from core.cli.commands.recognize import recognize_app
         runner = CliRunner()
-        result = runner.invoke(recognize_app, ["run"] + args, catch_exceptions=False)
+        normalized_args = self._normalize_path_args(args)
+        result = runner.invoke(recognize_app, ["run"] + normalized_args, catch_exceptions=False)
         if result.exit_code != 0:
             console.print(f"[red]Command exited with code {result.exit_code}[/red]")
             if result.output:
@@ -260,7 +276,8 @@ class InteractiveShell:
         from click.testing import CliRunner
         from core.cli.commands.albums import albums_app
         runner = CliRunner()
-        result = runner.invoke(albums_app, ["run"] + args, catch_exceptions=False)
+        normalized_args = self._normalize_path_args(args)
+        result = runner.invoke(albums_app, ["run"] + normalized_args, catch_exceptions=False)
         if result.exit_code != 0:
             console.print(f"[red]Command exited with code {result.exit_code}[/red]")
             if result.output:
