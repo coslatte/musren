@@ -30,7 +30,7 @@ setup(
     maintainer_email=MUSIC_RENAMER_MAINTAINER_EMAIL,
     url=MUSIC_RENAMER_URL,
     keywords=MUSIC_RENAMER_KEYWORDS,
-    packages=find_packages(include=["core", "core.cli", "core.cli.commands", "utils", "constants"]),
+    packages=find_packages(where=["."]),
     include_package_data=True,
     install_requires=[
         "mutagen>=1.45",
