@@ -338,18 +338,25 @@ class InteractiveShell:
                 console.print(result.output)
 
     def _run_config(self, args: list) -> None:
-        from core.cli.commands.config_shell import config_list_shell, config_set_shell, config_get_shell, config_delete_shell
-        
-        if not args or args[0] == "list":
-            config_list_shell()
-        elif args[0] == "set" and len(args) >= 3:
-            config_set_shell(args[1], " ".join(args[2:]))
-        elif args[0] == "get" and len(args) >= 2:
-            config_get_shell(args[1])
-        elif args[0] == "delete" and len(args) >= 2:
-            config_delete_shell(args[1])
-        else:
-            console.print("[yellow]Usage: config list | set <key> <value> | get <key> | delete <key>[/yellow]")
+        try:
+            from core.cli.commands.config_shell import config_list_shell, config_set_shell, config_get_shell, config_delete_shell
+            
+            if not args or args[0] == "list":
+                config_list_shell()
+            elif args[0] == "set" and len(args) >= 3:
+                config_set_shell(args[1], " ".join(args[2:]))
+            elif args[0] == "get" and len(args) >= 2:
+                config_get_shell(args[1])
+            elif args[0] == "delete" and len(args) >= 2:
+                config_delete_shell(args[1])
+            else:
+                console.print("[yellow]Usage: config list | set <key> <value> | get <key> | delete <key>[/yellow]")
+        except Exception as e:
+            console.print(Panel(
+                f"[red]Error in config command[/red]\n[yellow]{str(e)}[/yellow]",
+                title="[bold red]Error[/bold red]",
+                border_style="red",
+            ))
 
     def run(self) -> None:
         self.print_banner()
