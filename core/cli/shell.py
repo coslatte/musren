@@ -221,7 +221,6 @@ class InteractiveShell:
             ))
         
         console.print(f"[dim]Hint: Use /help for menu or b to go back.[/dim]")
-        self.show_main_menu()
 
     def _normalize_path_args(self, args: list) -> list:
         normalized = []
