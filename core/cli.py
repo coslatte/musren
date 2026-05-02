@@ -1,5 +1,8 @@
 """
-CLI entry point for the Music Renamer application.
+CLI entry point for the Music Renamer application (DEPRECATED).
+
+WARNING: This module is deprecated. Use core.cli instead.
+
 Handles command line arguments and executes corresponding operations.
 """
 

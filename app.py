@@ -1,16 +1,21 @@
-def main() -> None:
-    """Entrypoint used by console_scripts and direct execution.
+import sys
+import warnings
 
-    Imports the CLI implementation lazily so importing `app` doesn't
-    require all optional runtime dependencies to be installed.
-    """
-    import warnings
+warnings.filterwarnings("ignore", category=SyntaxWarning, module="pydub")
 
-    warnings.filterwarnings("ignore", category=SyntaxWarning, module="pydub")
 
-    from core.cli_typer import app as typer_app
-
-    typer_app()
+def main(interactive: bool = True) -> None:
+    if interactive and len(sys.argv) == 1:
+        from core.cli.shell import cli as musren_shell
+        musren_shell()
+    else:
+        from core.cli.shell import InteractiveShell
+        shell = InteractiveShell()
+        if len(sys.argv) > 1:
+            cmd = " ".join(sys.argv[1:])
+            shell.run_command(cmd)
+        else:
+            shell.run()
 
 
 if __name__ == "__main__":

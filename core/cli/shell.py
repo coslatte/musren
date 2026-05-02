@@ -1,0 +1,271 @@
+import os
+from pathlib import Path
+
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+
+from constants.info import MUSIC_RENAMER_VERSION
+
+console = Console()
+
+
+class MenuItem:
+    def __init__(self, id: int, name: str, description: str, command: str):
+        self.id = id
+        self.name = name
+        self.description = description
+        self.command = command
+
+
+class Screen:
+    def __init__(self, title: str, items: list[MenuItem]):
+        self.title = title
+        self.items = items
+    
+    def render(self) -> None:
+        console.print(Panel(f"[bold cyan]{self.title}[/bold cyan]", border_style="cyan", expand=False))
+        
+        for item in self.items:
+            console.print(f"  [yellow]{item.id}.[/yellow] [cyan]{item.name:<12}[/cyan] {item.description}")
+        
+        console.print()
+        console.print("[dim]Press number or type command. Esc to go back.[/dim]")
+
+
+class InteractiveShell:
+    def __init__(self):
+        self.running = True
+        self.history = []
+        self.current_dir = Path.cwd()
+        self.screen_stack = []
+        
+        self.screens = self._create_screens()
+
+    def _create_screens(self) -> dict:
+        return {
+            "main": Screen("MusRen - Main Menu", [
+                MenuItem(1, "Rename", "Rename audio files based on metadata", "rename"),
+                MenuItem(2, "Lyrics", "Search and embed synchronized lyrics", "lyrics"),
+                MenuItem(3, "Covers", "Add album covers to audio files", "covers"),
+                MenuItem(4, "Recognize", "Recognize audio using AcoustID/Shazam", "recognize"),
+                MenuItem(5, "Albums", "Organize files into album folders", "albums"),
+                MenuItem(6, "Config", "Manage API keys and settings", "config"),
+                MenuItem(7, "Help", "Show available commands", "/help"),
+            ]),
+            "config": Screen("Configuration", [
+                MenuItem(1, "List", "Show all API keys", "config list"),
+                MenuItem(2, "Set", "Set an API key", "config set"),
+                MenuItem(3, "Get", "Get an API key", "config get"),
+                MenuItem(4, "Delete", "Delete an API key", "config delete"),
+                MenuItem(5, "Back", "Go back to main menu", "back"),
+            ]),
+        }
+
+    def print_banner(self) -> None:
+        console.print()
+        console.rule("[bold cyan]MusRen CLI[/bold cyan]", style="cyan")
+        console.print(f"[dim]Version {MUSIC_RENAMER_VERSION}[/dim]")
+        console.print()
+
+    def show_main_menu(self) -> None:
+        screen = self.screens["main"]
+        console.print()
+        
+        panel_items = []
+        for item in screen.items:
+            panel_items.append(f"  [yellow]{item.id}.[/yellow] [cyan]{item.name:<12}[/cyan] {item.description}")
+        panel_items.extend(["", "[dim]Type number, command, or /exit to quit[/dim]"])
+        
+        console.print(Panel(
+            "\n".join(panel_items),
+            title=f"[bold cyan]{screen.title}[/bold cyan]",
+            border_style="cyan",
+            expand=False,
+        ))
+        console.print()
+
+    def show_config_menu(self) -> None:
+        screen = self.screens["config"]
+        
+        panel_items = []
+        for item in screen.items:
+            panel_items.append(f"  [yellow]{item.id}.[/yellow] [cyan]{item.name:<12}[/cyan] {item.description}")
+        
+        console.print(Panel(
+            "\n".join(panel_items),
+            title=f"[bold cyan]{screen.title}[/bold cyan]",
+            border_style="cyan",
+            expand=False,
+        ))
+        console.print()
+
+    def handle_number_input(self, input_str: str) -> str:
+        screen = self.screens.get("main", self.screens["main"])
+        try:
+            num = int(input_str.strip())
+            for item in screen.items:
+                if item.id == num:
+                    return item.command
+        except ValueError:
+            pass
+        return input_str
+
+    def run_command(self, input_line: str) -> None:
+        if not input_line.strip():
+            return
+        
+        parts = input_line.strip().split()
+        cmd_name = parts[0].lower()
+        args = parts[1:]
+        
+        console.rule(f"[bold cyan]{cmd_name}[/bold cyan]", style="cyan")
+        
+        try:
+            if cmd_name in ("rename", "rn"):
+                self._run_rename(args)
+            elif cmd_name in ("lyrics", "lyr"):
+                self._run_lyrics(args)
+            elif cmd_name in ("covers", "cov"):
+                self._run_covers(args)
+            elif cmd_name in ("recognize", "rec"):
+                self._run_recognize(args)
+            elif cmd_name in ("albums", "alb"):
+                self._run_albums(args)
+            elif cmd_name in ("config", "cfg"):
+                self._run_config(args)
+            else:
+                console.print(f"[red]Unknown command: {cmd_name}[/red]")
+        except Exception as e:
+            self._handle_error(e, cmd_name)
+
+    def _handle_error(self, error: Exception, command: str = "") -> None:
+        error_msg = str(error)
+        
+        error_messages = {
+            "No audio files found": "[yellow]No audio files found in the specified directory.[/yellow]\n[dim]Try a different directory or add audio files first.[/dim]",
+            "Missing dependencies": "[red]Missing required dependencies.[/red]\n[dim]Install required packages: pip install mutagen requests[/dim]",
+            "API key": "[yellow]API key not configured.[/yellow]\n[dim]Run: config set acoustid YOUR_KEY[/dim]",
+            "Permission denied": "[red]Permission denied.[/red]\n[dim]Check file permissions or try a different directory.[/dim]",
+            "Not found": "[red]Directory or file not found.[/red]\n[dim]Check the path and try again.[/dim]",
+        }
+        
+        for key, msg in error_messages.items():
+            if key.lower() in error_msg.lower():
+                console.print(Panel(msg, title="[bold red]Error[/bold red]", border_style="red"))
+                return
+        
+        console.print(Panel(
+            f"[red]Error running: {command}[/red]\n[yellow]{error_msg}[/yellow]",
+            title="[bold red]Error[/bold red]",
+            border_style="red",
+        ))
+
+    def _run_rename(self, args: list) -> None:
+        from core.cli.commands.rename import rename_run
+        rename_run.callback(*args)
+
+    def _run_lyrics(self, args: list) -> None:
+        from core.cli.commands.lyrics import lyrics_run
+        lyrics_run.callback(*args)
+
+    def _run_covers(self, args: list) -> None:
+        from core.cli.commands.covers import covers_run
+        covers_run.callback(*args)
+
+    def _run_recognize(self, args: list) -> None:
+        from core.cli.commands.recognize import recognize_run
+        recognize_run.callback(*args)
+
+    def _run_albums(self, args: list) -> None:
+        from core.cli.commands.albums import albums_run
+        albums_run.callback(*args)
+
+    def _run_config(self, args: list) -> None:
+        from core.cli.commands.config_shell import config_list_shell, config_set_shell, config_get_shell, config_delete_shell
+        
+        if not args or args[0] == "list":
+            config_list_shell()
+        elif args[0] == "set" and len(args) >= 3:
+            config_set_shell(args[1], " ".join(args[2:]))
+        elif args[0] == "get" and len(args) >= 2:
+            config_get_shell(args[1])
+        elif args[0] == "delete" and len(args) >= 2:
+            config_delete_shell(args[1])
+        else:
+            console.print("[yellow]Usage: config list | set <key> <value> | get <key> | delete <key>[/yellow]")
+
+    def run(self) -> None:
+        self.print_banner()
+        
+        welcome = """[bold cyan]Welcome to MusRen![/bold cyan]
+
+[dim]Manage your music files with ease.[/dim]
+
+[yellow]Navigate using numbers (1-7) or type commands.[/yellow]"""
+        console.print(Panel(welcome, border_style="cyan"))
+        
+        self.show_main_menu()
+
+        while self.running:
+            try:
+                prompt = f"[bold cyan]MusRen[/bold cyan] [yellow]{self.current_dir.name}[/yellow]$ "
+                console.print(prompt, end="")
+                choice = input().strip()
+
+                if not choice:
+                    continue
+
+                self.history.append(choice)
+
+                if choice.lower() in ("/exit", "/quit", "exit", "quit", "q", "x"):
+                    console.print("[yellow]Goodbye![/yellow]")
+                    break
+                elif choice.lower() in ("--version", "-v"):
+                    console.print(f"[bold cyan]MusRen[/bold cyan] v{MUSIC_RENAMER_VERSION}")
+                elif choice.lower() in ("/help", "?"):
+                    self.show_main_menu()
+                elif choice.lower() == "/clear":
+                    console.clear()
+                    self.print_banner()
+                elif choice.lower().startswith("/cd "):
+                    new_dir = choice[4:].strip()
+                    new_path = Path(new_dir).expanduser()
+                    if new_path.is_dir():
+                        self.current_dir = new_path.resolve()
+                        os.chdir(self.current_dir)
+                    else:
+                        console.print(f"[red]Directory not found: {new_dir}[/red]")
+                elif choice.lower() in ("/pwd", "pwd"):
+                    console.print(f"[cyan]{self.current_dir}[/cyan]")
+                elif choice.isdigit():
+                    result = self.handle_number_input(choice)
+                    if result == "/help":
+                        self.show_main_menu()
+                    elif result == "back":
+                        self.show_main_menu()
+                    else:
+                        self.run_command(result)
+                elif choice.startswith("/"):
+                    console.print(f"[red]Unknown: {choice}[/red]")
+                else:
+                    self.run_command(choice)
+
+                console.print()
+
+            except KeyboardInterrupt:
+                console.print("\n[dim]Use /exit to quit[/dim]")
+            except EOFError:
+                break
+            except Exception as e:
+                console.print(Panel(str(e), title="[bold red]Error[/bold red]", border_style="red"))
+                console.print()
+
+
+def cli() -> None:
+    shell = InteractiveShell()
+    shell.run()
+
+
+if __name__ == "__main__":
+    cli()
