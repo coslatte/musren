@@ -297,94 +297,109 @@ class InteractiveShell:
         return path_input
 
     def _run_rename(self, args: list) -> None:
-        from click.testing import CliRunner
-        from core.cli.commands.rename import rename_app
-        
         if not args:
             path = self._prompt_for_path("rename")
             if not path:
                 return
             args = [path]
         
-        runner = CliRunner()
+        import sys
+        from core.cli.commands.rename import rename_app
         normalized_args = self._normalize_path_args(args)
-        result = runner.invoke(rename_app, ["run"] + normalized_args, catch_exceptions=False)
-        if result.exit_code != 0:
-            console.print(f"[red]Command exited with code {result.exit_code}[/red]")
-            if result.output:
-                console.print(result.output)
+        old_argv = sys.argv
+        sys.argv = ["musren"] + normalized_args
+        try:
+            rename_app()
+        except SystemExit:
+            pass
+        except Exception as e:
+            self._handle_error(e, "rename")
+        finally:
+            sys.argv = old_argv
 
     def _run_lyrics(self, args: list) -> None:
-        from click.testing import CliRunner
-        from core.cli.commands.lyrics import lyrics_app
-        
         if not args:
             path = self._prompt_for_path("lyrics")
             if not path:
                 return
             args = [path]
         
-        runner = CliRunner()
+        import sys
+        from core.cli.commands.lyrics import lyrics_app
         normalized_args = self._normalize_path_args(args)
-        result = runner.invoke(lyrics_app, ["run"] + normalized_args, catch_exceptions=False)
-        if result.exit_code != 0:
-            console.print(f"[red]Command exited with code {result.exit_code}[/red]")
-            if result.output:
-                console.print(result.output)
+        old_argv = sys.argv
+        sys.argv = ["musren"] + normalized_args
+        try:
+            lyrics_app()
+        except SystemExit:
+            pass
+        except Exception as e:
+            self._handle_error(e, "lyrics")
+        finally:
+            sys.argv = old_argv
 
     def _run_covers(self, args: list) -> None:
-        from click.testing import CliRunner
-        from core.cli.commands.covers import covers_app
-        
         if not args:
             path = self._prompt_for_path("covers")
             if not path:
                 return
             args = [path]
         
-        runner = CliRunner()
+        import sys
+        from core.cli.commands.covers import covers_app
         normalized_args = self._normalize_path_args(args)
-        result = runner.invoke(covers_app, ["run"] + normalized_args, catch_exceptions=False)
-        if result.exit_code != 0:
-            console.print(f"[red]Command exited with code {result.exit_code}[/red]")
-            if result.output:
-                console.print(result.output)
+        old_argv = sys.argv
+        sys.argv = ["musren"] + normalized_args
+        try:
+            covers_app()
+        except SystemExit:
+            pass
+        except Exception as e:
+            self._handle_error(e, "covers")
+        finally:
+            sys.argv = old_argv
 
     def _run_recognize(self, args: list) -> None:
-        from click.testing import CliRunner
-        from core.cli.commands.recognize import recognize_app
-        
         if not args:
             path = self._prompt_for_path("recognize")
             if not path:
                 return
             args = [path]
         
-        runner = CliRunner()
+        import sys
+        from core.cli.commands.recognize import recognize_app
         normalized_args = self._normalize_path_args(args)
-        result = runner.invoke(recognize_app, ["run"] + normalized_args, catch_exceptions=False)
-        if result.exit_code != 0:
-            console.print(f"[red]Command exited with code {result.exit_code}[/red]")
-            if result.output:
-                console.print(result.output)
+        old_argv = sys.argv
+        sys.argv = ["musren"] + normalized_args
+        try:
+            recognize_app()
+        except SystemExit:
+            pass
+        except Exception as e:
+            self._handle_error(e, "recognize")
+        finally:
+            sys.argv = old_argv
 
     def _run_albums(self, args: list) -> None:
-        from click.testing import CliRunner
-        from core.cli.commands.albums import albums_app
-        
         if not args:
             path = self._prompt_for_path("albums")
             if not path:
                 return
             args = [path]
         
-        runner = CliRunner()
+        import sys
+        from core.cli.commands.albums import albums_app
         normalized_args = self._normalize_path_args(args)
-        result = runner.invoke(albums_app, ["run"] + normalized_args, catch_exceptions=False)
-        if result.exit_code != 0:
-            console.print(f"[red]Command exited with code {result.exit_code}[/red]")
-            if result.output:
-                console.print(result.output)
+        old_argv = sys.argv
+        sys.argv = ["musren"] + normalized_args
+        try:
+            albums_app()
+        except SystemExit:
+            pass
+        except Exception as e:
+            self._handle_error(e, "albums")
+        finally:
+            sys.argv = old_argv
 
     def _run_config(self, args: list) -> None:
         from rich.console import Console
