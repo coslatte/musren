@@ -307,7 +307,12 @@ class InteractiveShell:
             if not path.startswith("--") and Path(path).exists():
                 args = ["--directory", path]
         
+        console.print(f"[dim]Running: rename {' '.join(args)}[/dim]")
+        
         import sys
+        import os
+        os.environ["PYTHONIOENCODING"] = "utf-8"
+        
         from core.cli.commands.rename import rename_app
         old_argv = sys.argv
         sys.argv = ["musren"] + args
@@ -332,6 +337,9 @@ class InteractiveShell:
                 args = ["--directory", path]
         
         import sys
+        import os
+        os.environ["PYTHONIOENCODING"] = "utf-8"
+        
         from core.cli.commands.lyrics import lyrics_app
         old_argv = sys.argv
         sys.argv = ["musren"] + args
@@ -356,6 +364,9 @@ class InteractiveShell:
                 args = ["--directory", path]
         
         import sys
+        import os
+        os.environ["PYTHONIOENCODING"] = "utf-8"
+        
         from core.cli.commands.covers import covers_app
         old_argv = sys.argv
         sys.argv = ["musren"] + args
@@ -380,6 +391,9 @@ class InteractiveShell:
                 args = ["--directory", path]
         
         import sys
+        import os
+        os.environ["PYTHONIOENCODING"] = "utf-8"
+        
         from core.cli.commands.recognize import recognize_app
         old_argv = sys.argv
         sys.argv = ["musren"] + args
@@ -404,6 +418,9 @@ class InteractiveShell:
                 args = ["--directory", path]
         
         import sys
+        import os
+        os.environ["PYTHONIOENCODING"] = "utf-8"
+        
         from core.cli.commands.albums import albums_app
         old_argv = sys.argv
         sys.argv = ["musren"] + args
