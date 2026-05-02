@@ -307,14 +307,21 @@ class InteractiveShell:
             if not path.startswith("--") and Path(path).exists():
                 args = ["--directory", path]
         
-        console.print(f"[dim]Running: rename {' '.join(args)}[/dim]")
-        
         import sys
         import os
+        import io
+        
         os.environ["PYTHONIOENCODING"] = "utf-8"
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        if hasattr(sys.stderr, 'reconfigure'):
+            sys.stderr.reconfigure(encoding='utf-8', errors='replace')
         
         from core.cli.commands.rename import rename_app
         old_argv = sys.argv
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
+        
         sys.argv = ["musren"] + args
         try:
             rename_app()
@@ -324,6 +331,8 @@ class InteractiveShell:
             self._handle_error(e, "rename")
         finally:
             sys.argv = old_argv
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
 
     def _run_lyrics(self, args: list) -> None:
         if not args:
@@ -339,9 +348,15 @@ class InteractiveShell:
         import sys
         import os
         os.environ["PYTHONIOENCODING"] = "utf-8"
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        if hasattr(sys.stderr, 'reconfigure'):
+            sys.stderr.reconfigure(encoding='utf-8', errors='replace')
         
         from core.cli.commands.lyrics import lyrics_app
         old_argv = sys.argv
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
         sys.argv = ["musren"] + args
         try:
             lyrics_app()
@@ -351,6 +366,8 @@ class InteractiveShell:
             self._handle_error(e, "lyrics")
         finally:
             sys.argv = old_argv
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
 
     def _run_covers(self, args: list) -> None:
         if not args:
@@ -366,9 +383,15 @@ class InteractiveShell:
         import sys
         import os
         os.environ["PYTHONIOENCODING"] = "utf-8"
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        if hasattr(sys.stderr, 'reconfigure'):
+            sys.stderr.reconfigure(encoding='utf-8', errors='replace')
         
         from core.cli.commands.covers import covers_app
         old_argv = sys.argv
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
         sys.argv = ["musren"] + args
         try:
             covers_app()
@@ -378,6 +401,8 @@ class InteractiveShell:
             self._handle_error(e, "covers")
         finally:
             sys.argv = old_argv
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
 
     def _run_recognize(self, args: list) -> None:
         if not args:
@@ -393,9 +418,15 @@ class InteractiveShell:
         import sys
         import os
         os.environ["PYTHONIOENCODING"] = "utf-8"
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        if hasattr(sys.stderr, 'reconfigure'):
+            sys.stderr.reconfigure(encoding='utf-8', errors='replace')
         
         from core.cli.commands.recognize import recognize_app
         old_argv = sys.argv
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
         sys.argv = ["musren"] + args
         try:
             recognize_app()
@@ -405,6 +436,8 @@ class InteractiveShell:
             self._handle_error(e, "recognize")
         finally:
             sys.argv = old_argv
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
 
     def _run_albums(self, args: list) -> None:
         if not args:
@@ -420,9 +453,15 @@ class InteractiveShell:
         import sys
         import os
         os.environ["PYTHONIOENCODING"] = "utf-8"
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        if hasattr(sys.stderr, 'reconfigure'):
+            sys.stderr.reconfigure(encoding='utf-8', errors='replace')
         
         from core.cli.commands.albums import albums_app
         old_argv = sys.argv
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
         sys.argv = ["musren"] + args
         try:
             albums_app()
@@ -432,6 +471,8 @@ class InteractiveShell:
             self._handle_error(e, "albums")
         finally:
             sys.argv = old_argv
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
 
     def _run_config(self, args: list) -> None:
         from rich.console import Console
