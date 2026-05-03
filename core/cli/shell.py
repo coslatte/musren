@@ -308,14 +308,15 @@ class InteractiveShell:
             if not path:
                 return
             args = ["--directory", path]
+        elif args[0].startswith("--"):
+            pass
         else:
             path = args[0]
-            if not path.startswith("--") and Path(path).exists():
-                args = ["--directory", path]
-            elif "This PC" in path or path.startswith("\\"):
+            if "This PC" in path or path.startswith("\\"):
                 console.print(f"[red]Invalid path format: {path}[/red]")
                 console.print("[yellow]Use real filesystem path (e.g., C:\\Music, F:\\)[/yellow]")
                 return
+            args = ["--directory", path] if Path(path).exists() else args
         
         import sys
         import os
@@ -350,14 +351,15 @@ class InteractiveShell:
             if not path:
                 return
             args = ["--directory", path]
+        elif args[0].startswith("--"):
+            pass
         else:
             path = args[0]
-            if not path.startswith("--") and Path(path).exists():
-                args = ["--directory", path]
-            elif "This PC" in path or path.startswith("\\"):
+            if "This PC" in path or path.startswith("\\"):
                 console.print(f"[red]Invalid path format: {path}[/red]")
                 console.print("[yellow]Use real filesystem path (e.g., C:\\Music, F:\\)[/yellow]")
                 return
+            args = ["--directory", path] if Path(path).exists() else args
         
         import sys
         import os
@@ -389,14 +391,15 @@ class InteractiveShell:
             if not path:
                 return
             args = ["--directory", path]
+        elif args[0].startswith("--"):
+            pass
         else:
             path = args[0]
-            if not path.startswith("--") and Path(path).exists():
-                args = ["--directory", path]
-            elif "This PC" in path or path.startswith("\\"):
+            if "This PC" in path or path.startswith("\\"):
                 console.print(f"[red]Invalid path format: {path}[/red]")
                 console.print("[yellow]Use real filesystem path (e.g., C:\\Music, F:\\)[/yellow]")
                 return
+            args = ["--directory", path] if Path(path).exists() else args
         
         import sys
         import os
@@ -428,14 +431,15 @@ class InteractiveShell:
             if not path:
                 return
             args = ["--directory", path]
+        elif args[0].startswith("--"):
+            pass
         else:
             path = args[0]
-            if not path.startswith("--") and Path(path).exists():
-                args = ["--directory", path]
-            elif "This PC" in path or path.startswith("\\"):
+            if "This PC" in path or path.startswith("\\"):
                 console.print(f"[red]Invalid path format: {path}[/red]")
                 console.print("[yellow]Use real filesystem path (e.g., C:\\Music, F:\\)[/yellow]")
                 return
+            args = ["--directory", path] if Path(path).exists() else args
         
         import sys
         import os
@@ -467,14 +471,15 @@ class InteractiveShell:
             if not path:
                 return
             args = ["--directory", path]
+        elif args[0].startswith("--"):
+            pass
         else:
             path = args[0]
-            if not path.startswith("--") and Path(path).exists():
-                args = ["--directory", path]
-            elif "This PC" in path or path.startswith("\\"):
+            if "This PC" in path or path.startswith("\\"):
                 console.print(f"[red]Invalid path format: {path}[/red]")
                 console.print("[yellow]Use real filesystem path (e.g., C:\\Music, F:\\)[/yellow]")
                 return
+            args = ["--directory", path] if Path(path).exists() else args
         
         import sys
         import os
