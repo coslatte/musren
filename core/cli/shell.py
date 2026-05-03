@@ -383,7 +383,7 @@ class InteractiveShell:
             sys.stdout = old_stdout
             sys.stderr = old_stderr
 
-def _run_covers(self, args: list) -> None:
+    def _run_covers(self, args: list) -> None:
         if not args:
             path = self._prompt_for_path("covers")
             if not path:
@@ -397,6 +397,30 @@ def _run_covers(self, args: list) -> None:
                 console.print(f"[red]Invalid path format: {path}[/red]")
                 console.print("[yellow]Use real filesystem path (e.g., C:\\Music, F:\\)[/yellow]")
                 return
+        
+        import sys
+        import os
+        os.environ["PYTHONIOENCODING"] = "utf-8"
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        if hasattr(sys.stderr, 'reconfigure'):
+            sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+        
+        from core.cli.commands.covers import covers_app
+        old_argv = sys.argv
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
+        sys.argv = ["musren"] + args
+        try:
+            covers_app()
+        except SystemExit:
+            pass
+        except Exception as e:
+            self._handle_error(e, "covers")
+        finally:
+            sys.argv = old_argv
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
 
     def _run_recognize(self, args: list) -> None:
         if not args:
@@ -412,6 +436,30 @@ def _run_covers(self, args: list) -> None:
                 console.print(f"[red]Invalid path format: {path}[/red]")
                 console.print("[yellow]Use real filesystem path (e.g., C:\\Music, F:\\)[/yellow]")
                 return
+        
+        import sys
+        import os
+        os.environ["PYTHONIOENCODING"] = "utf-8"
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        if hasattr(sys.stderr, 'reconfigure'):
+            sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+        
+        from core.cli.commands.recognize import recognize_app
+        old_argv = sys.argv
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
+        sys.argv = ["musren"] + args
+        try:
+            recognize_app()
+        except SystemExit:
+            pass
+        except Exception as e:
+            self._handle_error(e, "recognize")
+        finally:
+            sys.argv = old_argv
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
 
     def _run_albums(self, args: list) -> None:
         if not args:
@@ -427,10 +475,84 @@ def _run_covers(self, args: list) -> None:
                 console.print(f"[red]Invalid path format: {path}[/red]")
                 console.print("[yellow]Use real filesystem path (e.g., C:\\Music, F:\\)[/yellow]")
                 return
+        
+        import sys
+        import os
+        os.environ["PYTHONIOENCODING"] = "utf-8"
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        if hasattr(sys.stderr, 'reconfigure'):
+            sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+        
+        from core.cli.commands.albums import albums_app
+        old_argv = sys.argv
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
+        sys.argv = ["musren"] + args
+        try:
+            albums_app()
+        except SystemExit:
+            pass
+        except Exception as e:
+            self._handle_error(e, "albums")
+        finally:
+            sys.argv = old_argv
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+
+    def _run_recognize(self, args: list) -> None:
+        if not args:
+            path = self._prompt_for_path("recognize")
+            if not path:
+                return
+            args = ["--directory", path]
         else:
             path = args[0]
             if not path.startswith("--") and Path(path).exists():
                 args = ["--directory", path]
+            elif "This PC" in path or path.startswith("\\"):
+                console.print(f"[red]Invalid path format: {path}[/red]")
+                console.print("[yellow]Use real filesystem path (e.g., C:\\Music, F:\\)[/yellow]")
+                return
+        
+        import sys
+        import os
+        os.environ["PYTHONIOENCODING"] = "utf-8"
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        if hasattr(sys.stderr, 'reconfigure'):
+            sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+        
+        from core.cli.commands.recognize import recognize_app
+        old_argv = sys.argv
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
+        sys.argv = ["musren"] + args
+        try:
+            recognize_app()
+        except SystemExit:
+            pass
+        except Exception as e:
+            self._handle_error(e, "recognize")
+        finally:
+            sys.argv = old_argv
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+
+    def _run_albums(self, args: list) -> None:
+        if not args:
+            path = self._prompt_for_path("albums")
+            if not path:
+                return
+            args = ["--directory", path]
+        else:
+            path = args[0]
+            if not path.startswith("--") and Path(path).exists():
+                args = ["--directory", path]
+            elif "This PC" in path or path.startswith("\\"):
+                console.print(f"[red]Invalid path format: {path}[/red]")
+                console.print("[yellow]Use real filesystem path (e.g., C:\\Music, F:\\)[/yellow]")
+                return
         
         import sys
         import os
