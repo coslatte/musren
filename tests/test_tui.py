@@ -257,7 +257,8 @@ def test_tui_launch_missing_dependency(monkeypatch):
         return original(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", without_textual)
-    with pytest.raises(SystemExit, match="pip install"):
+    expected = "Python 3.9" if sys.version_info < (3, 9) else "pip install"
+    with pytest.raises(SystemExit, match=expected):
         entry.tui()
 
 
