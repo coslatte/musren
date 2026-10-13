@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.1
+
+- Publish a portable Windows x64 executable that opens the TUI without a Python installation.
+- Keep CLI commands available in the executable, including `--cli` for the original menu.
+- Run packaged processing jobs without opening additional console windows.
+- Bundle optional Python dependencies for lyrics, artwork, AcoustID, MusicBrainz, and Shazam.
+- Build and smoke-test the executable in the release workflow.
+
+AcoustID still requires the external Chromaprint `fpcalc` binary and an API key.
+
 ## 1.3.0
 
 - Add an optional Textual interface with all existing audio workflows.

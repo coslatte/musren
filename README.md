@@ -50,6 +50,11 @@ musren organizes your music by:
 
 ### Terminal interface
 
+On Windows, download `musren-windows-x64.exe` from the
+[latest release](https://github.com/coslatte/musren/releases/latest) and run it.
+It opens the TUI without installing Python. CLI commands remain available through
+the same executable.
+
 ```powershell
 pip install -e ".[tui]"
 musren-tui

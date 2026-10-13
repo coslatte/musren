@@ -26,14 +26,37 @@ jobs:
       - run: python -m ruff check .
       - run: python -m pytest -q
 
-  publish:
+  windows:
     needs: validate
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install standalone build dependencies
+        run: python -m pip install --only-binary=shazamio-core,pydantic-core ".[tui,recognition,lyrics,musicbrainz,shazam]" pyinstaller==6.22.0
+      - name: Build portable Windows executable
+        run: python scripts/build_windows.py
+      - name: Verify standalone CLI and TUI processing
+        run: python scripts/verify_windows.py dist/windows/musren-windows-x64.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-portable
+          path: dist/windows/*
+
+  publish:
+    needs: [validate, windows]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-portable
+          path: dist/windows
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -41,10 +64,10 @@ jobs:
         run: |
           python -m pip install build twine
           python -m build
-          python -m twine check dist/*
+          python -m twine check dist/*.whl dist/*.tar.gz
       - name: Verify version and release contents
         run: python scripts/verify_release.py --tag "${{ github.ref_name }}" --dist dist
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "${{ github.ref_name }}" dist/* --verify-tag --title "musren ${{ github.ref_name }}" --notes-file CHANGELOG.md
+        run: gh release create "${{ github.ref_name }}" dist/*.whl dist/*.tar.gz dist/SHA256SUMS.txt dist/windows/* --verify-tag --title "musren ${{ github.ref_name }}" --notes-file CHANGELOG.md

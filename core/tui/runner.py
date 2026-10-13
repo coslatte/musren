@@ -4,9 +4,16 @@ import json
 import queue
 import sys
 import threading
-from typing import Any
+from typing import Any, List
 
 EVENT_PREFIX = "MUSREN_EVENT "
+
+
+def worker_command(arguments: List[str]) -> List[str]:
+    """Use the packaged launcher for child jobs when Python is embedded."""
+    if getattr(sys, "frozen", False):
+        return [sys.executable, "--_musren-worker", *arguments]
+    return [sys.executable, "-u", "-m", "core.tui.runner", *arguments]
 
 
 def emit(kind: str, **values: Any) -> None:

@@ -3,7 +3,7 @@ from pathlib import Path
 
 setup(
     name="musren",
-    version="1.3.0",
+    version="1.3.1",
     description="Music file renamer with metadata, lyrics, covers and recognition",
     long_description=Path(__file__).with_name("README.md").read_text(encoding="utf-8"),
     long_description_content_type="text/markdown",

@@ -3,6 +3,7 @@
 import asyncio
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 from typing import Optional
@@ -30,7 +31,7 @@ from textual.widgets import (
 
 from core.cli.config import ConfigManager, VALID_KEYS
 from core.tui.jobs import Job, OPERATIONS
-from core.tui.runner import EVENT_PREFIX
+from core.tui.runner import EVENT_PREFIX, worker_command
 from utils.tools import get_audio_files
 
 
@@ -370,21 +371,21 @@ class MusrenApp(App[None]):
                 NO_COLOR="1",
                 TERM="dumb",
             )
-            environment["PYTHONPATH"] = (
-                str(Path(__file__).resolve().parents[2])
-                + os.pathsep
-                + environment.get("PYTHONPATH", "")
-            )
+            if not getattr(sys, "frozen", False):
+                environment["PYTHONPATH"] = (
+                    str(Path(__file__).resolve().parents[2])
+                    + os.pathsep
+                    + environment.get("PYTHONPATH", "")
+                )
             self.process = await asyncio.create_subprocess_exec(
-                sys.executable,
-                "-u",
-                "-m",
-                "core.tui.runner",
-                *arguments,
+                *worker_command(arguments),
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT,
                 env=environment,
+                creationflags=subprocess.CREATE_NO_WINDOW
+                if os.name == "nt" and getattr(sys, "frozen", False)
+                else 0,
             )
             if self.cancelling or self.quit_after_job:
                 await self.send_control("cancel")

@@ -1,4 +1,5 @@
 include LICENSE README.md CLI.md TUI.md CHANGELOG.md DEPLOYMENT.md
 include scripts/verify_release.py
+include scripts/build_windows.py scripts/windows_launcher.py scripts/verify_windows.py
 include ruff.toml
 exclude .env

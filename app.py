@@ -5,6 +5,12 @@ from constants.info import MUSIC_RENAMER_VERSION
 
 
 def main(interactive: bool = True) -> None:
+    if sys.argv[1:2] == ["--_musren-worker"]:
+        from core.tui.runner import main as run_worker
+
+        del sys.argv[1]
+        run_worker()
+        return
     if "--version" in sys.argv or "-v" in sys.argv:
         print(f"musren {MUSIC_RENAMER_VERSION}")
         return
