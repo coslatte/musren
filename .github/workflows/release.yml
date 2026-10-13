@@ -25,6 +25,7 @@ jobs:
       - run: python -m ruff format --check .
       - run: python -m ruff check .
       - run: python -m pytest -q
+      - run: python scripts/check_docs.py
 
   windows:
     needs: validate
@@ -70,4 +71,4 @@ jobs:
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "${{ github.ref_name }}" dist/*.whl dist/*.tar.gz dist/SHA256SUMS.txt dist/windows/* --verify-tag --title "musren ${{ github.ref_name }}" --notes-file CHANGELOG.md
+        run: gh release create "${{ github.ref_name }}" dist/*.whl dist/*.tar.gz dist/SHA256SUMS.txt dist/windows/* --verify-tag --title "musren ${{ github.ref_name }}" --notes-file docs/changelog.md

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Move detailed guides into `docs/` and installation helpers into `scripts/`.
+- Consolidate metadata, dependency extras, build settings, and Ruff rules in `pyproject.toml`.
+- Read the package version from `constants/info.py` and refresh `uv.lock`.
+- Add documentation-link checks to CI and release validation.
+
 ## 1.3.1
 
 - Publish a portable Windows x64 executable that opens the TUI without a Python installation.

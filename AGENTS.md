@@ -1,164 +1,76 @@
-# AGENTS.md — Agent & Contributor Guide
+# Agent and contributor guide
 
-This document helps contributors and automated coding agents work effectively in this repository (musren). It describes the code structure, development workflow, and conventions to keep edits safe, reviewable, and testable.
+musren organizes local audio files through a CLI and an optional Textual TUI.
+Use English for generated messages, documentation, and commit messages.
 
-## Project overview
+## Repository map
 
-- Stack: Python 3.8+ (CLI utility and small library).
-- Purpose: organize, tag and optionally embed metadata/artwork/lyrics into audio files.
-- Entrypoints:
-  - `app.py` — public `main()` entry used by the CLI.
-  - `core/` — modules for audio processing: `artwork.py`, `audio_processor.py`, `install_covers.py`, `cli.py`.
-  - `utils/` — helper utilities (`dependencies.py`, `tools.py`).
-- Optional binaries: `fpcalc` (Chromaprint) may be required for fingerprinting-based recognition.
+- `app.py`: CLI and TUI entry points, including packaged worker dispatch.
+- `core/cli/`: command parsing, the original menu, and shared audio commands.
+- `core/tui/`: widgets, validated jobs, and the isolated processing runner.
+- `core/audio_processor.py`, `core/artwork.py`, and `core/install_covers.py`: audio operations.
+- `constants/` and `utils/`: settings, version, file discovery, and dependency checks.
+- `tests/`: import checks, disposable audio fixtures, workflows, and headless UI tests.
+- `docs/`: user guides, contributor instructions, release steps, and changelog.
+- `scripts/`: installers, package validation, and portable Windows builds.
+- `pyproject.toml`: package metadata, extras, launchers, build backend, and Ruff settings.
 
-## Run commands (Windows example)
+The CLI supports Python 3.8+. The TUI requires Python 3.9+. Portable Windows
+builds use Python 3.13 and PyInstaller. AcoustID also needs the external `fpcalc`
+binary. Optional Python features use extras in `pyproject.toml`.
 
-- Create venv: `py -3 -m venv .venv`
-- Activate (PowerShell):
+## Working rules
+
+- Keep docstrings short, usually one to three lines. Annotate new functions explicitly.
+- Import optional third-party libraries inside the functions that need them.
+- Avoid network calls, subprocesses, and filesystem mutations at module import time.
+- Catch errors explicitly and report them. Never swallow errors with a bare `except:`.
+- Keep CLI and TUI behavior in the shared commands and audio engine.
+- Keep patches focused and reversible. Preserve existing work in the checkout.
+- Keep `AGENTS.md` at the repository root. Use hidden files for machine metadata.
+
+## Workflow
+
+1. Outline two to six concrete steps and identify affected files.
+2. Search with `rg` and inspect the actual callers before editing.
+3. Make focused patches, one file at a time where practical.
+4. Check imports, then run the relevant tests and the full suite.
+5. Verify the real artifact or behavior. Include commands and results in the final report or PR.
+
+For environment setup, use [docs/contributing.md](docs/contributing.md).
 
 ```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-- Install deps:
-
-```powershell
-py -3 -m pip install -r requirements.txt
-# For optional features (recognition, lyrics, musicbrainz):
-py -3 -m pip install .[recognition,lyrics,musicbrainz]
-```
-
-- Run tests:
-
-```powershell
+py -3 -m pip install -e ".[dev,tui]"
+py -3 -c "import app; import core.audio_processor; import core.tui"
 py -3 -m pytest -q
 ```
 
-- Run CLI (example):
+Use an isolated environment. If the launcher selects an unintended interpreter,
+select the project's supported Python installation before running these commands.
 
-```powershell
-py -3 app.py --help
-# or, if installed as a package:
-py -3 -m musren
-```
+## Mandatory checks before a commit or pull request
 
-## Development environment recommendations
-
-- Python: 3.8+ (the repo was developed with modern Python; prefer 3.10+ where available).
-- Use an isolated virtual environment per project (venv, venvwrapper, or pyenv/virtualenv).
-- Editor: VSCode with Python extension. Recommended VSCode extensions are provided in `.vscode/extensions.json` when present.
-- Do not rely on module-level network I/O, subprocess calls, or file-system mutations — the project uses lazy imports and guards for optional features.
-
-## Codebase map
-
-- `app.py` — public entry point, exposes `main()`.
-- `core/` — core processing logic:
-  - `artwork.py` — fetching and embedding album art (lazy imports for `mutagen`, `requests`).
-  - `audio_processor.py` — metadata edits, recognition (optional `acoustid`), lyrics embedding.
-  - `install_covers.py` — batch cover installer CLI.
-  - `cli.py` — command parsing and orchestration.
-- `utils/` — small utilities and dependency checks (`dependencies.py`, `tools.py`).
-- `constants/` — small project constants and settings.
-- `tests/` — non-invasive tests (import checks and lightweight validators).
-
-## Conventions and rules (important for agents)
-
-- Language: English for all generated messages, docs, and commit messages.
-- Docstrings & typing: keep docstrings short (1–3 lines) and prefer explicit type annotations for new functions.
-- Lazy imports: do not import optional third-party libraries at module import time. Use local imports inside functions that need them.
-- No side-effects on import: avoid network, filesystem writes, or subprocess calls at import time.
-- Error handling: prefer explicit `except Exception:` with logged or returned messages; avoid silent `except:` swallowing.
-- Extras: optional features are exposed via `extras_require` in `setup.py` (see groups: `recognition`, `lyrics`, `musicbrainz`).
-
-## Agent workflow (how to make safe changes)
-
-Agents (human or automated) should follow a short, repeatable workflow for non-trivial edits.
-
-1. Plan: outline 2–6 concrete steps (search, edit, validate) and list files to change.
-2. Search: use `rg`/`ripgrep` or VSCode workspace search to find symbols/files; open files in small chunks to limit scope.
-3. Edit: prefer small, focused patches — one file per patch where practical.
-   - Use the repository's patch format when possible.
-4. Validate locally:
-   - Run import checks first (e.g., `py -3 -c "import importlib; importlib.import_module('app')"`).
-   - Run tests: `py -3 -m pytest -q`.
-5. Document and PR: include a short description, related tests, and verification steps in the PR body.
-
-## Common low-risk tasks (how-to)
-
-- Make an optional dependency lazy:
-  - Move `import mutagen` inside the function that needs it.
-  - Add a guard message when the module is missing (do not crash at import time).
-  - Add a tiny test asserting the module still imports when the optional dependency is not installed.
-
-- Add `fpcalc` check for Chromaprint:
-  - Use `shutil.which('fpcalc')` and SEARCH paths (project root and `utils/`) before failing.
-  - Document binary install steps in `README.md`.
-
-- Add tests:
-  - Prefer non-invasive tests that assert importability and small functional behaviors.
-  - If a feature requires optional deps, either mark the test to skip when deps missing or add those extras in CI.
-
-## Minimal prompt template for agents
-
-When asking an LLM to make code changes in this repo, use a concise template:
-
-```
-Repository path: <absolute path>
-Goal: <one-sentence goal>
-Constraints:
-- English only
-- Short docstrings, explicit types for new code
-- No import-time side-effects
-- Keep patches small (1 file per patch when possible)
-Files to inspect: <list>
-
-Produce:
-1) A short plan (2–6 steps)
-2) Patches per file (diff format)
-3) Tests to add/update
-4) A brief validation summary and commands
-```
-
-## Mandatory ruff check (AI agents)
-
-**Before every commit or pull request**, run the following two commands and fix any reported issues:
+Run both commands and fix every reported issue:
 
 ```powershell
 py -3 -m ruff format .
 py -3 -m ruff check .
 ```
 
-`ruff format` reformats all Python files to match the project style.  
-`ruff check` detects lint errors (unused imports, undefined names, etc.).  
-Do not proceed until both pass without errors.
+Do not commit or open a PR until both commands pass. CI uses Ruff 0.15.0 and the
+rules declared in `pyproject.toml`.
 
-## Agent checklist (quick)
+## Tests and packaging
 
-- [ ] Did I plan 2–6 steps? 
-- [ ] Did I avoid module-level side effects? 
-- [ ] Did I run `ruff format .` and `ruff check .`? 
-- [ ] Did I run import checks and tests? 
-- [ ] Did I produce a small, reversible patch? 
-```text
-- [ ] Did I plan 2–6 steps?
-- [ ] Did I avoid module-level side effects?
-- [ ] Did I run `ruff format .` and `ruff check .`?
-- [ ] Did I run import checks and tests?
-- [ ] Did I produce a small, reversible patch?
-```
+Use disposable files for audio tests and controlled responses for remote services.
+Optional feature tests must skip when their dependency is absent or install the
+corresponding extra in CI. Import checks must remain non-invasive.
 
-## File naming and placement
+Verify `fpcalc` in PATH and supported project locations before reporting it
+missing. Document installation requirements in the user guides.
 
-- Use `AGENTS.md` (plural) in the repository root for agent guidance; it is visible and friendly for contributors.
-- Keep hidden files (starting with `.`) for machine metadata only. We recommend `AGENTS.md` over a dot-file to increase discoverability.
+When moving documentation or configuration, update Markdown links, `MANIFEST.in`,
+release workflows, and artifact verification together. When changing metadata,
+refresh `uv.lock` and verify wheel and source builds.
 
-## VSCode & CI integration (optional enhancements)
-
-- Recommend these VSCode extensions to contributors: `ms-python.python`, `yzhang.markdown-all-in-one`, `gruntfuggly.todo-tree`, `eamodio.gitlens`.
-- Consider adding `.vscode/extensions.json` and `.vscode/settings.json` to recommend and configure these (I can add them).
-- Add a helper script `tools/sync_agent_todo.py` to export checklist items to `.agent_todos.json` for tooling and UI integration.
-- Consider adding a GitHub Actions workflow to ensure `AGENTS.md` exists and basic checks pass on push/PR.
-
----
-Last updated: 2025-10-24
+The release procedure is in [docs/releases.md](docs/releases.md).

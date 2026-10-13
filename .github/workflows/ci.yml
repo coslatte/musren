@@ -36,6 +36,8 @@ jobs:
           python -m ruff check .
       - name: Test all workflows and responsive layouts
         run: python -m pytest -q
+      - name: Check documentation links
+        run: python scripts/check_docs.py
       - name: Check installed launchers
         run: |
           musren --version

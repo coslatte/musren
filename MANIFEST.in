@@ -1,5 +1,4 @@
-include LICENSE README.md CLI.md TUI.md CHANGELOG.md DEPLOYMENT.md
-include scripts/verify_release.py
-include scripts/build_windows.py scripts/windows_launcher.py scripts/verify_windows.py
-include ruff.toml
+include LICENSE README.md AGENTS.md pyproject.toml uv.lock
+recursive-include docs *.md
+recursive-include scripts *.py *.ps1 *.sh *.bat
 exclude .env
