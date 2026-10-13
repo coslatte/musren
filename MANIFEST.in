@@ -1,3 +1,4 @@
 include LICENSE README.md CLI.md TUI.md CHANGELOG.md DEPLOYMENT.md
 include scripts/verify_release.py
+include ruff.toml
 exclude .env

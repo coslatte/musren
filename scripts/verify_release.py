@@ -43,6 +43,7 @@ def verify(dist: Path, tag: str) -> None:
         root = f"musren-{version}/"
         assert all(root + name in names for name in required)
         assert root + "TUI.md" in names and root + "CHANGELOG.md" in names
+        assert root + "ruff.toml" in names, "Source archive missing lint settings"
         assert not any(Path(name).name == ".env" for name in names), (
             "Environment file included"
         )
