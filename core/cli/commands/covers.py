@@ -97,6 +97,7 @@ def covers_run(
     suppress_noisy_loggers()
     pause = get_pause_manager()
     pause.start()
+    errors = []
 
     with Progress(
         TextColumn("  [bold cyan]{task.description}"),
@@ -115,6 +116,7 @@ def covers_run(
             status = ""
             if not result.get("status"):
                 status = "[red]Error[/red]"
+                errors.append((file_path, result.get("error", "Unknown error")))
             elif result.get("skipped"):
                 status = "[yellow]Skipped[/yellow]"
             else:
@@ -127,14 +129,25 @@ def covers_run(
                 description=f"[bold white]{desc}[/bold white]",
             )
 
-        install_covers.run(audio_dir, progress_callback=progress_callback)
+        stats = install_covers.run(
+            audio_dir, progress_callback=progress_callback, recursive=recursive
+        )
 
     pause.stop()
 
+    if errors:
+        details = Table(title="Cover errors", box=SIMPLE_HEAVY)
+        details.add_column("File")
+        details.add_column("Error", style="red")
+        for file_path, error in errors:
+            details.add_row(Path(file_path).name, str(error))
+        console.print(details)
+
     console.print(
         Panel(
-            "Covers added successfully.",
-            border_style="green",
+            f"Processed {stats['total']} files: {stats['success']} added, "
+            f"{stats['skipped']} skipped, {stats['failed']} failed.",
+            border_style="yellow" if stats["failed"] else "green",
             title="Completed",
         )
     )

@@ -2,52 +2,49 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['v*']
   workflow_dispatch:
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install build
-          python -m build
-          
-      - name: Upload release asset
-        uses: softprops/action-gh-release@v1
-        with:
-          files: dist/*
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+permissions:
+  contents: read
 
-  test:
-    runs-on: ubuntu-latest
+jobs:
+  validate:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.9', '3.13']
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install ".[tui]" pytest ruff
+      - run: python -m ruff format --check .
+      - run: python -m ruff check .
+      - run: python -m pytest -q
+
+  publish:
+    needs: validate
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          
-      - name: Install dependencies
+      - name: Build release artifacts
         run: |
-          python -m pip install --upgrade pip
-          pip install pytest
-          pip install build
+          python -m pip install build twine
           python -m build
-          pip install dist/musren-*.whl
-          
-      - name: Run tests
-        run: pytest -q --ignore=tests/test_imports.py --ignore=tests/test_rename.py
+          python -m twine check dist/*
+      - name: Verify version and release contents
+        run: python scripts/verify_release.py --tag "${{ github.ref_name }}" --dist dist
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "${{ github.ref_name }}" dist/* --verify-tag --title "musren ${{ github.ref_name }}" --notes-file CHANGELOG.md

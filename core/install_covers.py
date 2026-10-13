@@ -92,7 +92,12 @@ def process_file(file_path, art_manager):
         return {"status": False, "error": str(e)}
 
 
-def run(directory: str, max_workers: int = 4, progress_callback=None) -> dict:
+def run(
+    directory: str,
+    max_workers: int = 4,
+    progress_callback=None,
+    recursive: bool = False,
+) -> dict:
     """Runs the cover installation process without using argparse.
 
     Designed to be called from other parts of the code (e.g., Typer CLI)
@@ -101,7 +106,7 @@ def run(directory: str, max_workers: int = 4, progress_callback=None) -> dict:
     directory = os.path.abspath(directory)
 
     # Get audio files
-    files = get_audio_files(directory)
+    files = get_audio_files(directory, recursive=recursive)
     if not files:
         return {"success": 0, "skipped": 0, "failed": 0, "total": 0}
 

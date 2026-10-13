@@ -59,7 +59,7 @@ def recognize_run(
     ),
 ) -> None:
     """Recognize audio files and fetch metadata."""
-    if not check_dependencies(use_recognition=True):
+    if not check_dependencies(use_recognition=True, use_shazam=shazam):
         console.print(
             Panel(
                 "Missing dependencies. Aborting...",
@@ -72,7 +72,7 @@ def recognize_run(
     config = get_config_manager()
     api_key = config.get("acoustid")
 
-    if not api_key:
+    if not api_key and not shazam:
         console.print(
             Panel(
                 "No AcoustID API key set. Run: musren config set acoustid YOUR_KEY",
@@ -187,7 +187,12 @@ def recognize_run(
             if not artist_title:
                 artist_title = Path(file).name
 
-            error_msg = res.get("recognition_error") or res.get("metadata_error") or ""
+            error_msg = (
+                res.get("error")
+                or res.get("recognition_error")
+                or res.get("metadata_error")
+                or ""
+            )
 
             if recognized and not error_msg:
                 error_msg = "N/A"

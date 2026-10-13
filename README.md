@@ -48,6 +48,21 @@ musren organizes your music by:
 
 ## Usage
 
+### Terminal interface
+
+```powershell
+pip install -e ".[tui]"
+musren-tui
+# Or: python app.py --tui
+```
+
+The optional TUI provides folder browsing, file previews, forms for every audio
+workflow, credential management, and pause/cancellation controls. It requires
+Python 3.9+. See [TUI.md](TUI.md) for options, controls, and validation details.
+The CLI and original interactive menu remain available.
+
+Release installation and publishing steps are in [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ```powershell
 # Interactive mode
 python app.py

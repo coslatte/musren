@@ -10,11 +10,6 @@ from utils.tools import (
     suppress_noisy_loggers,
 )
 
-try:
-    from core.shazam_processor import ShazamProcessor
-except ImportError:
-    ShazamProcessor = None
-
 
 class AudioProcessor:
     """
@@ -52,14 +47,12 @@ class AudioProcessor:
             # ShazamIO es pesado y sensible a múltiples peticiones simultáneas
             self.max_workers = min(max_workers, 2)
 
-            if ShazamProcessor:
-                try:
-                    self.shazam_processor = ShazamProcessor()
-                except Exception as e:
-                    print(f"Error inicializando Shazam: {e}")
-                    self.use_shazam = False
-            else:
-                print("Advertencia: ShazamProcessor no disponible (instala shazamio).")
+            try:
+                from core.shazam_processor import ShazamProcessor
+
+                self.shazam_processor = ShazamProcessor()
+            except Exception as error:
+                print(f"Unable to initialize Shazam: {error}")
                 self.use_shazam = False
 
     def process_files(

@@ -2,54 +2,53 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev, feature/tui]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ['3.10', '3.11', '3.12']
-    
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.9', '3.11', '3.13']
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          
-      - name: Install dependencies
+      - name: Build and install the product
         run: |
           python -m pip install --upgrade pip
-          pip install pytest
-          pip install build
+          python -m pip install build pytest ruff twine
           python -m build
-          pip install dist/musren-*.whl
-          
-      - name: Run tests
-        run: pytest -q --ignore=tests/test_imports.py --ignore=tests/test_rename.py
-        
-      - name: Check imports
-        run: python -c "from core.cli.shell import cli; print('OK')"
+          python -m pip install ".[tui]"
+          python -m twine check dist/*
+      - name: Validate style
+        run: |
+          python -m ruff format --check .
+          python -m ruff check .
+      - name: Test all workflows and responsive layouts
+        run: python -m pytest -q
+      - name: Check installed launchers
+        run: |
+          musren --version
+          musren --help
+          python -c "from core.tui.app import MusrenApp; print('TUI import passed')"
 
-  lint:
+  cli-compatibility:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          
-      - name: Install dependencies
-        run: |
-          pip install build
-          python -m build
-          pip install dist/musren-*.whl
-          
-      - name: Check CLI
-        run: musren --version || true
+          python-version: '3.8'
+      - run: python -m pip install . pytest
+      - run: python -m pytest -q
+      - run: musren --version

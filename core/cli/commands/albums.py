@@ -28,6 +28,20 @@ console = Console()
 albums_app = typer.Typer(help="Organize audio files into album folders")
 
 
+def _move_track(source: Path, destination: Path) -> bool:
+    """Move a track without overwriting another file; skip already placed tracks."""
+    if source.resolve() == destination.resolve():
+        return False
+    base = destination.stem
+    extension = destination.suffix
+    counter = 1
+    while destination.exists():
+        destination = destination.with_name(f"{base} ({counter}){extension}")
+        counter += 1
+    shutil.move(str(source), str(destination))
+    return True
+
+
 def _is_single_album(album_name: str) -> bool:
     return (
         album_name.lower().strip() in ("single", "singles", "unknown album")
@@ -151,8 +165,7 @@ def albums_run(
                     pause.wait_if_paused(console)
                     try:
                         dest_path = dest_dir / track.name
-                        shutil.move(str(track), str(dest_path))
-                        singles_count += 1
+                        singles_count += int(_move_track(track, dest_path))
                     except Exception as e:
                         errors.append(f"{track.name}: {e}")
                     desc = format_progress_desc(f"Moving: {track.name}")
@@ -174,8 +187,7 @@ def albums_run(
                     pause.wait_if_paused(console)
                     try:
                         dest_path = album_dir / track.name
-                        shutil.move(str(track), str(dest_path))
-                        albums_moved += 1
+                        albums_moved += int(_move_track(track, dest_path))
                     except Exception as e:
                         errors.append(f"{track.name}: {e}")
                     desc = format_progress_desc(f"Moving: {track.name}")

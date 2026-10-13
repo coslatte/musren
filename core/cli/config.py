@@ -22,7 +22,7 @@ DEFAULT_SETTINGS = {
 class ConfigManager:
     def __init__(self, config_path: Optional[Path] = None):
         self.config_path = config_path or CONFIG_FILE
-        self.config_dir = CONFIG_DIR
+        self.config_dir = self.config_path.parent
         self._config: Dict[str, Any] = {}
         self._load()
 

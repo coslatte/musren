@@ -285,7 +285,8 @@ def lyrics_run(
                 artist_title = Path(file).name
 
             error_msg = (
-                res.get("embed_error")
+                res.get("error")
+                or res.get("embed_error")
                 or res.get("lyrics_error")
                 or res.get("recognition_error")
                 or res.get("metadata_error")

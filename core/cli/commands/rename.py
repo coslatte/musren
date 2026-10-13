@@ -52,6 +52,11 @@ def rename_run(
         "-y",
         help="Execute without confirmations",
     ),
+    rename_format: str = typer.Option(
+        "",
+        "--format",
+        help="Rename format: 1=artist/title, 2=title, 3=track/artist/title",
+    ),
 ) -> None:
     """Rename audio files based on their metadata."""
     if not check_dependencies(use_recognition=False):
@@ -88,13 +93,15 @@ def rename_run(
     table.add_row("Files found", str(len(files)))
     console.print(table)
 
-    if not yes:
+    if rename_format and rename_format not in ("1", "2", "3"):
+        raise typer.BadParameter("Format must be 1, 2 or 3", param_hint="--format")
+    if not rename_format and not yes:
         console.print("\n[bold cyan]Select rename format:[/bold cyan]")
         console.print("  [bold]1[/bold] - artist - title")
         console.print("  [bold]2[/bold] - title")
         console.print("  [bold]3[/bold] - track_number - artist - title (if album)")
         rename_format = typer.prompt("Choose format", default="1", type=str)
-    else:
+    elif not rename_format:
         rename_format = "1"
 
     processor = AudioProcessor(

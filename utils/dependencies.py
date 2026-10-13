@@ -11,7 +11,11 @@ import shutil
 
 
 def check_dependencies(
-    use_recognition=False, require_lyrics=False, require_covers=False
+    use_recognition=False,
+    require_lyrics=False,
+    require_covers=False,
+    interactive=True,
+    use_shazam=False,
 ):
     MODULE_TO_PIP = {
         "mutagen": "mutagen",
@@ -19,6 +23,7 @@ def check_dependencies(
         "syncedlyrics": "syncedlyrics",
         "acoustid": "pyacoustid",
         "musicbrainzngs": "musicbrainzngs",
+        "shazamio": "shazamio",
     }
 
     def is_installed(module_name: str) -> bool:
@@ -30,7 +35,7 @@ def check_dependencies(
     if require_lyrics:
         required.append("syncedlyrics")
     if use_recognition:
-        required.append("acoustid")
+        required.append("shazamio" if use_shazam else "acoustid")
 
     missing_deps = []
 
@@ -45,6 +50,9 @@ def check_dependencies(
         for dep in missing_deps:
             print(f"  - {dep}")
 
+        if not interactive:
+            print(f"Install dependencies with: pip install {' '.join(missing_deps)}")
+            return False
         install = input(
             "\nDo you want to install the missing dependencies? (Y/N): "
         ).lower()
@@ -75,7 +83,7 @@ def check_dependencies(
             )
             return False
 
-    if use_recognition and check_acoustid_needed():
+    if use_recognition and not use_shazam and check_acoustid_needed():
         installed, message = check_acoustid_installation()
         print(f"\nChromaprint/AcoustID: {message}")
 
