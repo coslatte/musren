@@ -4,6 +4,10 @@ Organize a local music library from a terminal. musren renames audio files from
 their metadata, fetches lyrics and artwork, recognizes tracks, and groups albums
 into folders. Use the terminal interface or the existing CLI.
 
+## Preview
+
+![preview](assets/demo-image-2026.jpg)
+
 ## Run on Windows
 
 Download [musren-windows-x64.exe](https://github.com/coslatte/musren/releases/latest/download/musren-windows-x64.exe)
