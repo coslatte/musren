@@ -6,11 +6,21 @@ original interactive menu remain available.
 
 ## Process a folder
 
-1. Enter a music directory, or select a folder in the browser.
+1. Enter a music directory and press Enter, select **Browse with fzf**, or
+   select a folder in the browser.
 2. Choose an operation and its options.
 3. Select **Preview** to inspect the audio files in scope.
 4. Select **Run** and confirm the folder and operation.
 5. Read the results and per-file errors in **Output**.
+
+Typing a path and pressing Enter moves the **Folders** panel to that path and
+runs a preview. **Browse with fzf** hands the terminal to [fzf](https://github.com/junegunn/fzf)
+so you can fuzzy-search and pick a folder; it needs `fzf` in PATH, lists the
+subfolders of the current directory three levels deep, and the status line
+explains what to do when it is missing. Install it with `winget install
+junegunn.fzf`, `scoop install fzf`, `choco install fzf`, or your package manager.
+The button is unavailable without a real terminal, and the portable Windows
+build does not bundle fzf.
 
 Preview scans filenames without modifying files. A preview does not predict
 new names or remote matches. To include nested folders, enable **Include
@@ -59,9 +69,10 @@ The form and browser appear side by side on wide terminals. Below 90 columns,
 the panels stack in a scrollable workspace. Below 60 columns, job controls use
 two rows. The layout is tested from 40×20 to 160×50 and during resizing.
 
-**Folders** browses the filesystem. **Files in scope** lists the preview results.
-**Output** opens when processing starts. Configuration and help scroll separately.
-Job controls remain visible below the tabs.
+**Folders** browses the filesystem, following the directory you enter. **Files
+in scope** lists the preview results. **Output** opens when processing starts.
+Configuration and help scroll separately. Job controls remain visible below the
+tabs.
 
 | Key | Action |
 | --- | --- |

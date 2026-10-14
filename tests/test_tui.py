@@ -1,6 +1,8 @@
 import asyncio
+import contextlib
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import threading
@@ -202,6 +204,183 @@ def test_tui_invalid_directory(tmp_path):
             assert "existing directory" in str(
                 app.query_one("#status", Static).render()
             )
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.skipif(not HAS_TEXTUAL, reason="Install the tui extra for UI tests")
+def test_tui_typed_directory_drives_tree_and_preview(tmp_path):
+    from textual.widgets import DataTable, DirectoryTree, Input, Static
+    from core.tui.app import MusrenApp
+
+    music = tmp_path / "elsewhere"
+    music.mkdir()
+    (music / "song.mp3").write_bytes(b"placeholder")
+
+    async def scenario():
+        app = MusrenApp(ConfigManager(tmp_path / "config.json"))
+        async with app.run_test(size=(120, 45)) as pilot:
+            tree = app.query_one("#tree", DirectoryTree)
+            assert tree.path != music, (
+                "the browser must not stay on the launch directory"
+            )
+            field = app.query_one("#directory", Input)
+            field.focus()
+            field.value = str(music)
+            await pilot.pause()
+            assert tree.path != music, "typing alone must not rescan"
+            await pilot.press("enter")
+            for _ in range(3):
+                await pilot.pause()
+            assert tree.path == music
+            assert app.query_one("#files", DataTable).row_count == 1
+            field.value = str(music / "missing")
+            await pilot.press("enter")
+            for _ in range(3):
+                await pilot.pause()
+            assert app.query_one("#files", DataTable).row_count == 0
+            assert "existing directory" in str(
+                app.query_one("#status", Static).render()
+            )
+            assert tree.path == music
+
+    asyncio.run(scenario())
+
+
+def fake_fzf(monkeypatch, tmp_path, body):
+    """Put a fzf shim first on PATH so pick_directory can be driven from tests."""
+    root = tmp_path / "bin"
+    root.mkdir(exist_ok=True)
+    shim = root / ("fzf.cmd" if os.name == "nt" else "fzf")
+    shim.write_text(body, encoding="utf-8")
+    if os.name != "nt":
+        shim.chmod(0o755)
+    monkeypatch.setenv("PATH", str(root) + os.pathsep + os.environ.get("PATH", ""))
+
+
+def echo_fzf_script():
+    """A fzf shim that echoes the first line it reads, like picking the top match."""
+    if os.name == "nt":
+        return "@echo off\r\nset /p picked=\r\necho %picked%\r\n"
+    return '#!/bin/sh\nread -r picked\necho "$picked"\n'
+
+
+def cancel_fzf_script():
+    if os.name == "nt":
+        return "@echo off\r\nexit /b 130\r\n"
+    return "#!/bin/sh\nexit 130\n"
+
+
+def test_list_directories_bounds_depth_and_count(tmp_path):
+    from core.tui.app import list_directories
+
+    (tmp_path / "a" / "b" / "c").mkdir(parents=True)
+    (tmp_path / "a" / "b" / "deep").mkdir()
+    (tmp_path / "z").mkdir()
+    (tmp_path / "a" / "song.mp3").write_bytes(b"x")
+    found = list_directories(tmp_path, max_depth=3, limit=10)
+    assert found == [
+        str(tmp_path / "a"),
+        str(tmp_path / "a" / "b"),
+        str(tmp_path / "a" / "b" / "c"),
+        str(tmp_path / "a" / "b" / "deep"),
+        str(tmp_path / "z"),
+    ]
+    assert list_directories(tmp_path, max_depth=1, limit=10) == [
+        str(tmp_path / "a"),
+        str(tmp_path / "z"),
+    ]
+    assert len(list_directories(tmp_path, max_depth=3, limit=2)) == 2
+
+
+def test_pick_directory_uses_fzf(monkeypatch, tmp_path):
+    from core.tui.app import FZF_MISSING, pick_directory
+
+    library = tmp_path / "Library"
+    (library / "Rock").mkdir(parents=True)
+
+    monkeypatch.setenv("PATH", "")
+    with pytest.raises(OSError, match=FZF_MISSING.split(".")[0]):
+        pick_directory(library)
+
+    fake_fzf(monkeypatch, tmp_path, echo_fzf_script())
+    assert pick_directory(library) == str(library / "Rock")
+
+
+def test_pick_directory_reports_cancelled(monkeypatch, tmp_path):
+    from core.tui.app import pick_directory
+
+    library = tmp_path / "Library"
+    (library / "Rock").mkdir(parents=True)
+    fake_fzf(monkeypatch, tmp_path, cancel_fzf_script())
+    assert pick_directory(library) is None
+
+
+@pytest.mark.skipif(not HAS_TEXTUAL, reason="Install the tui extra for UI tests")
+def test_tui_browse_sets_directory_and_previews(monkeypatch, tmp_path):
+    from core.tui.app import MusrenApp
+    from textual.widgets import DataTable, DirectoryTree, Input, Static
+
+    library = tmp_path / "Library"
+    (library / "Rock").mkdir(parents=True)
+    (library / "Rock" / "song.mp3").write_bytes(b"x")
+
+    async def scenario():
+        fake_fzf(monkeypatch, tmp_path, echo_fzf_script())
+        app = MusrenApp(ConfigManager(tmp_path / "config.json"))
+        async with app.run_test(size=(120, 45)) as pilot:
+            # run_test has no terminal to hand over, so stub the suspension only.
+            monkeypatch.setattr(app, "suspend", contextlib.nullcontext)
+            app.query_one("#directory", Input).value = str(library)
+            await pilot.pause()
+            await app.browse_with_fzf().wait()
+            await pilot.pause()
+            assert app.query_one("#directory", Input).value == str(library / "Rock")
+            assert app.query_one("#tree", DirectoryTree).path == library / "Rock"
+            await app.preview_files().wait()
+            assert app.query_one("#files", DataTable).row_count == 1
+            assert "1 audio files" in str(app.query_one("#status", Static).render())
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.skipif(not HAS_TEXTUAL, reason="Install the tui extra for UI tests")
+def test_tui_browse_reports_missing_binary(tmp_path):
+    from core.tui.app import MusrenApp
+    from textual.widgets import Static
+
+    async def scenario():
+        app = MusrenApp(ConfigManager(tmp_path / "config.json"))
+        async with app.run_test(size=(120, 45)) as pilot:
+            await pilot.pause()
+            # No real terminal, so suspend is refused before fzf is even looked up.
+            await app.browse_with_fzf().wait()
+            await pilot.pause()
+            assert "real terminal" in str(app.query_one("#status", Static).render())
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.skipif(not HAS_TEXTUAL, reason="Install the tui extra for UI tests")
+def test_tui_browse_button_keeps_directory_on_cancel(monkeypatch, tmp_path):
+    from core.tui.app import MusrenApp
+    from textual.widgets import Input, Static
+
+    library = tmp_path / "Library"
+    (library / "Rock").mkdir(parents=True)
+
+    async def scenario():
+        fake_fzf(monkeypatch, tmp_path, cancel_fzf_script())
+        app = MusrenApp(ConfigManager(tmp_path / "config.json"))
+        async with app.run_test(size=(120, 45)) as pilot:
+            monkeypatch.setattr(app, "suspend", contextlib.nullcontext)
+            app.query_one("#directory", Input).value = str(library)
+            await pilot.pause()
+            await pilot.click("#browse")
+            for _ in range(3):
+                await pilot.pause()
+            assert app.query_one("#directory", Input).value == str(library)
+            assert "without choosing" in str(app.query_one("#status", Static).render())
 
     asyncio.run(scenario())
 

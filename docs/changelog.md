@@ -6,6 +6,8 @@
 - Consolidate metadata, dependency extras, build settings, and Ruff rules in `pyproject.toml`.
 - Read the package version from `constants/info.py` and refresh `uv.lock`.
 - Add documentation-link checks to CI and release validation.
+- Let the TUI accept a typed working directory on Enter and keep the folder browser on that path.
+- Add **Browse with fzf** to pick the working directory; it is optional and reports when unavailable.
 
 ## 1.3.1
 

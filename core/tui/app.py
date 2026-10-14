@@ -3,13 +3,14 @@
 import asyncio
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from textual import events, on, work
-from textual.app import App, ComposeResult
+from textual.app import App, ComposeResult, SuspendNotSupported
 from textual.containers import Grid, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import (
@@ -33,6 +34,50 @@ from core.cli.config import ConfigManager, VALID_KEYS
 from core.tui.jobs import Job, OPERATIONS
 from core.tui.runner import EVENT_PREFIX, worker_command
 from utils.tools import get_audio_files
+
+# fzf is optional: the app falls back to typing the path or using the Folders panel.
+FZF_MISSING = "fzf was not found in PATH. Type the path or use the Folders panel."
+FZF_SEARCH_DEPTH = 3
+FZF_SEARCH_LIMIT = 2000
+
+
+def list_directories(
+    root: Path, max_depth: int = FZF_SEARCH_DEPTH, limit: int = FZF_SEARCH_LIMIT
+) -> List[str]:
+    """Collect subfolder candidates for fzf under root.
+
+    shortcut: bounded depth and count, so a huge tree cannot stall the picker;
+    raise the limits or index the library when a full crawl is needed.
+    """
+    found: List[str] = []
+    root_depth = len(root.parts)
+    for parent, directories, _ in os.walk(root):
+        if len(Path(parent).parts) - root_depth >= max_depth:
+            del directories[:]
+            continue
+        for name in directories:
+            found.append(str(Path(parent) / name))
+            if len(found) >= limit:
+                return sorted(found)
+    return sorted(found)
+
+
+def pick_directory(root: Path) -> Optional[str]:
+    """Run fzf over root's subfolders and return the chosen path.
+
+    Returns None when fzf is unavailable or the user cancels.
+    """
+    executable = shutil.which("fzf")
+    if not executable:
+        raise OSError(FZF_MISSING)
+    result = subprocess.run(
+        # stderr is left on the terminal so fzf can draw its interface there.
+        [executable, "--reverse", "--prompt=music folder> "],
+        input="\n".join(list_directories(root)),
+        stdout=subprocess.PIPE,
+        text=True,
+    )
+    return result.stdout.strip() or None
 
 
 class Confirmation(ModalScreen[bool]):
@@ -74,6 +119,7 @@ class MusrenApp(App[None]):
     #tree, #files { height: 1fr; }
     Label { margin-top: 1; color: $text-muted; }
     Input, Select { margin-bottom: 0; }
+    #browse { width: 1fr; margin-top: 1; }
     Checkbox { margin-top: 1; }
     .buttons { layout: grid; grid-size: 2; grid-rows: 3; grid-gutter: 1;
                height: 7; margin-top: 1; }
@@ -123,7 +169,12 @@ class MusrenApp(App[None]):
                 with VerticalScroll(id="workspace"):
                     with VerticalScroll(id="form"):
                         yield Label("Music directory")
-                        yield Input(str(Path.cwd()), id="directory")
+                        yield Input(
+                            str(Path.cwd()),
+                            placeholder="Type or paste a path, then press Enter",
+                            id="directory",
+                        )
+                        yield Button("Browse with fzf", id="browse")
                         yield Label("Operation")
                         yield Select(
                             [(v, k) for k, v in OPERATIONS.items()],
@@ -194,6 +245,10 @@ class MusrenApp(App[None]):
                 with VerticalScroll():
                     yield Static(
                         "Choose a folder and operation, then Preview and Run. Run asks before modifying files.\n\n"
+                        "Type or paste the working directory in the field and press Enter to browse and preview it. "
+                        "Browse with fzf searches the subfolders of that directory and sets it for you; "
+                        "it needs fzf in PATH and falls back to typing when it is missing. "
+                        "The Folders panel follows the chosen path, so pick a folder there to scope the job.\n\n"
                         "Rename supports all three formats and asks whether to keep or revert changes. "
                         "Lyrics can recognize first and fetch artwork. Recognition supports AcoustID and Shazam. "
                         "Albums groups tracks into folders; Revert flattens audio files back to the chosen folder.\n\n"
@@ -244,10 +299,13 @@ class MusrenApp(App[None]):
     def status(self, text: str) -> None:
         self.query_one("#status", Static).update(text)
 
+    def directory(self) -> Path:
+        return Path(self.query_one("#directory", Input).value.strip()).expanduser()
+
     def job(self) -> Job:
         return Job(
             str(self.query_one("#operation", Select).value),
-            Path(self.query_one("#directory", Input).value.strip()).expanduser(),
+            self.directory(),
             self.query_one("#recursive", Checkbox).value,
             str(self.query_one("#format", Select).value),
             self.query_one("#recognition", Checkbox).value,
@@ -264,6 +322,42 @@ class MusrenApp(App[None]):
             self.query_one(selector).display = operation == "lyrics"
         self.query_one("#shazam").display = operation == "recognize"
         self.query_one("#recursive").disabled = operation == "revert"
+
+    @on(Input.Submitted, "#directory")
+    def directory_submitted(self) -> None:
+        """Commit the typed path: browse from there and preview it."""
+        path = self.directory()
+        tree = self.query_one("#tree", DirectoryTree)
+        if path.is_dir() and tree.path != path:
+            tree.path = path
+        self.action_preview()
+
+    @on(Button.Pressed, "#browse")
+    def action_browse(self) -> None:
+        if not self.running_job:
+            self.browse_with_fzf()
+
+    @work(exclusive=True, group="browse")
+    async def browse_with_fzf(self) -> None:
+        """Hand the terminal to fzf and adopt the folder it picks."""
+        self.workers.cancel_group(self, "preview")
+        start = self.directory()
+        if not start.is_dir():
+            start = Path.cwd()
+        try:
+            with self.suspend():
+                selection = await asyncio.to_thread(pick_directory, start)
+        except SuspendNotSupported:
+            self.status("fzf needs a real terminal. Type the path and press Enter.")
+            return
+        except OSError as error:
+            self.status(str(error))
+            return
+        if not selection:
+            self.status(f"fzf closed without choosing a folder. Still in {start}.")
+            return
+        self.query_one("#directory", Input).value = selection
+        self.directory_submitted()
 
     @on(DirectoryTree.DirectorySelected)
     def directory_selected(self, event: DirectoryTree.DirectorySelected) -> None:
@@ -336,6 +430,7 @@ class MusrenApp(App[None]):
         for selector in (
             "#run",
             "#preview",
+            "#browse",
             "#save-key",
             "#delete-key",
             "#clear-config",
