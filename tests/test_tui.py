@@ -150,7 +150,12 @@ def test_tui_mount_preview_config_help(tmp_path, size):
             app.change_config("delete")
             assert not config.get("acoustid")
             app.query_one("#light-theme", Checkbox).value = True
-            await pilot.pause()
+            # Checkbox.Changed is dispatched from the widget's own message pump,
+            # so a single pause can return before the app applies the theme.
+            for _ in range(20):
+                await pilot.pause()
+                if app.theme == "textual-light":
+                    break
             assert app.theme == "textual-light"
             app.action_help()
             await pilot.pause()
