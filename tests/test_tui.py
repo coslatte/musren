@@ -271,6 +271,7 @@ def cancel_fzf_script():
     return "#!/bin/sh\nexit 130\n"
 
 
+@pytest.mark.skipif(not HAS_TEXTUAL, reason="Install the tui extra for UI tests")
 def test_list_directories_bounds_depth_and_count(tmp_path):
     from core.tui.app import list_directories
 
@@ -293,6 +294,7 @@ def test_list_directories_bounds_depth_and_count(tmp_path):
     assert len(list_directories(tmp_path, max_depth=3, limit=2)) == 2
 
 
+@pytest.mark.skipif(not HAS_TEXTUAL, reason="Install the tui extra for UI tests")
 def test_pick_directory_uses_fzf(monkeypatch, tmp_path):
     from core.tui.app import FZF_MISSING, pick_directory
 
@@ -307,6 +309,7 @@ def test_pick_directory_uses_fzf(monkeypatch, tmp_path):
     assert pick_directory(library) == str(library / "Rock")
 
 
+@pytest.mark.skipif(not HAS_TEXTUAL, reason="Install the tui extra for UI tests")
 def test_pick_directory_reports_cancelled(monkeypatch, tmp_path):
     from core.tui.app import pick_directory
 
