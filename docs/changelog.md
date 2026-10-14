@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.4.0
 
 - Move detailed guides into `docs/` and installation helpers into `scripts/`.
 - Consolidate metadata, dependency extras, build settings, and Ruff rules in `pyproject.toml`.
@@ -8,6 +8,11 @@
 - Add documentation-link checks to CI and release validation.
 - Let the TUI accept a typed working directory on Enter and keep the folder browser on that path.
 - Add **Browse with fzf** to pick the working directory; it is optional and reports when unavailable.
+
+The TUI previously browsed only the directory it was launched from. Enter now
+commits a typed path and moves the browser there. fzf is not bundled: the
+portable Windows executable still needs it installed separately, and the TUI
+falls back to typing a path when it is missing.
 
 ## 1.3.1
 
