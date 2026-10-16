@@ -60,7 +60,7 @@ def offline_commands(monkeypatch, tmp_path):
     monkeypatch.setattr(
         AudioProcessor,
         "_fetch_synced_lyrics",
-        lambda self, artist, title: {"status": False, "message": "No lyrics"},
+        lambda self, *args: {"status": False, "message": "No lyrics"},
     )
 
 

@@ -7,7 +7,6 @@ import subprocess
 from utils.tools import (
     check_internet_connection,
     get_audio_files,
-    suppress_noisy_loggers,
 )
 
 
@@ -176,6 +175,12 @@ class AudioProcessor:
             audio.get("album", ["Unknown Album"])[0] if audio else "Unknown Album"
         )
 
+        # Length decides whether a lyrics hit is this recording or a live take.
+        try:
+            duration = float(audio.info.length) if audio else 0.0
+        except (AttributeError, TypeError, ValueError):
+            duration = 0.0
+
         # Initialize variables for metadata tracking
         final_artist = current_artist
         final_title = current_title
@@ -257,7 +262,7 @@ class AudioProcessor:
         # Search for synchronized lyrics only if requested
         if process_lyrics:
             lyrics_result = self._fetch_synced_lyrics(
-                artist_for_lyrics, title_for_lyrics
+                artist_for_lyrics, title_for_lyrics, final_album, duration
             )
 
             if lyrics_result["status"]:
@@ -551,49 +556,27 @@ class AudioProcessor:
                 "message": f"Error recognizing the song: {str(e)}",
             }
 
-    def _fetch_synced_lyrics(self, artist, title):
+    def _fetch_synced_lyrics(self, artist, title, album="", duration=0.0):
         """
-        Searches for synchronized lyrics using the syncedlyrics library.
+        Searches for synchronized lyrics through the provider chain.
 
         Args:
             artist (str): Artist name
             title (str): Song title
+            album (str): Album name, narrows the LRCLib lookup
+            duration (float): Track length in seconds, rejects another recording
 
         Returns:
             dict: Synchronized lyrics or error message
         """
-        if not check_internet_connection():
-            return {
-                "status": False,
-                "message": "No internet connection. Skipping lyrics search.",
-            }
+        from core.lyrics import fetch_lyrics
 
-        try:
-            suppress_noisy_loggers()
-            import syncedlyrics
+        lrc_content, provider = fetch_lyrics(artist, title, album, duration)
 
-            search_term = f"{artist} {title}"
-            lrc_content = syncedlyrics.search(search_term)
-            suppress_noisy_loggers()
+        if lrc_content:
+            return {"status": True, "lyrics": lrc_content, "provider": provider}
 
-            if lrc_content and len(lrc_content) > 0:
-                return {"status": True, "lyrics": lrc_content}
-            else:
-                return {
-                    "status": False,
-                    "message": "No synchronized lyrics found",
-                }
-
-        except ImportError:
-            return {
-                "status": False,
-                "message": "The syncedlyrics library is not installed. Install it with 'pip install syncedlyrics'",
-            }
-        except Exception as e:
-            return {
-                "status": False,
-                "message": f"Error searching for synchronized lyrics: {str(e)}",
-            }
+        return {"status": False, "message": "No synchronized lyrics found"}
 
     def _embed_lyrics(self, file_path, lyrics_content, is_synced=True):
         """
