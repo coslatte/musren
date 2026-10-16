@@ -25,7 +25,7 @@ dependencies = [
 [project.optional-dependencies]
 tui = ["textual>=0.85,<1; python_version >= '3.9'"]
 recognition = ["pyacoustid>=1.0"]
-lyrics = ["syncedlyrics>=0.9"]
+lyrics = ["syncedlyrics>=1.0.1"]
 musicbrainz = ["musicbrainzngs>=0.7.1"]
 shazam = ["shazamio>=0.6; python_version >= '3.9'"]
 dev = ["pytest>=7", "ruff==0.15.0", "build>=1", "twine>=5"]

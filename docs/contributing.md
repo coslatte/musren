@@ -52,6 +52,7 @@ network calls or mutations.
 | `core/cli/` | CLI commands and original menu |
 | `core/tui/` | Interface, job arguments, and isolated workers |
 | `core/audio_processor.py` | Metadata, recognition, lyrics, and file renaming |
+| `core/lyrics.py` | Synchronized-lyrics provider chain (LRCLIB, Paxsenix, syncedlyrics) |
 | `core/artwork.py` | Artwork retrieval and embedding |
 | `core/install_covers.py` | Batch artwork installation |
 | `constants/` | Settings and the authoritative package version |
