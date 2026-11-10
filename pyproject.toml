@@ -7,7 +7,7 @@ name = "musren"
 dynamic = ["version"]
 description = "Music file renamer with metadata, lyrics, covers and recognition"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [{ name = "cosLatte", email = "gabrielpazruiz02@gmail.com" }]
 classifiers = [
@@ -20,14 +20,16 @@ dependencies = [
     "typer>=0.9",
     "rich>=13.0",
     "python-dotenv>=0.21",
+    "keyring>=25.7.0",
 ]
 
 [project.optional-dependencies]
-tui = ["textual>=0.85,<1; python_version >= '3.9'"]
+tui = ["textual>=0.85,<1"]
 recognition = ["pyacoustid>=1.0"]
 lyrics = ["syncedlyrics>=1.0.1"]
 musicbrainz = ["musicbrainzngs>=0.7.1"]
-shazam = ["shazamio>=0.6; python_version >= '3.9'"]
+shazam = ["shazamio>=0.6"]
+desktop = ["pyinstaller>=6.22.0"]
 dev = ["pytest>=7", "ruff==0.15.0", "build>=1", "twine>=5"]
 
 [project.scripts]
@@ -48,7 +50,7 @@ include-package-data = true
 version = { attr = "constants.info.MUSIC_RENAMER_VERSION" }
 
 [tool.ruff]
-target-version = "py38"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F"]

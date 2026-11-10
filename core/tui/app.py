@@ -284,6 +284,11 @@ class MusrenApp(App[None]):
             else "textual-dark"
         )
         self.refresh_keys()
+        if self.config.load_error:
+            self.notify(
+                f"Configuration could not be read: {self.config.load_error}",
+                severity="warning",
+            )
         self.update_options()
         self.adapt_layout(self.size.width, self.size.height)
 
@@ -572,13 +577,25 @@ class MusrenApp(App[None]):
     def refresh_keys(self) -> None:
         table = self.query_one("#keys", DataTable)
         table.clear()
+        unavailable = None
         for key in VALID_KEYS:
-            table.add_row(key, "Configured" if self.config.get(key) else "Not set")
+            try:
+                status = "Configured" if self.config.get(key) else "Not set"
+            except OSError as error:
+                unavailable = unavailable or error
+                status = "Unavailable"
+            table.add_row(key, status)
+        if unavailable:
+            # 2026-11-09: explica cuando Linux carece de un llavero de sesión.
+            self.notify(str(unavailable), severity="error")
 
     @on(Button.Pressed, "#load-key")
     def load_key(self) -> None:
         key = str(self.query_one("#key", Select).value)
-        self.query_one("#secret", Input).value = self.config.get(key, "")
+        try:
+            self.query_one("#secret", Input).value = self.config.get(key, "")
+        except OSError as error:
+            self.notify(str(error), severity="error")
 
     @on(Button.Pressed, "#save-key")
     def save_key(self) -> None:

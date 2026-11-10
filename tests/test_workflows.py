@@ -9,6 +9,7 @@ from typer.testing import CliRunner
 from core.audio_processor import AudioProcessor
 from core.cli.app import app
 from core.cli.config import ConfigManager
+from core.cli import config as config_module
 from core.tui.jobs import Job
 from utils.tools import PauseManager
 
@@ -41,6 +42,22 @@ def tagged_mp3(tmp_path):
 
 @pytest.fixture(autouse=True)
 def offline_commands(monkeypatch, tmp_path):
+    # 2026-11-09: evita depender de un llavero de escritorio en pruebas aisladas.
+    values = {}
+
+    class MemoryCredentialStore:
+        def get_password(self, name):
+            return values.get(name)
+
+        def set_password(self, name, value):
+            values[name] = value
+
+        def delete_password(self, name):
+            return values.pop(name, None) is not None
+
+    monkeypatch.setattr(
+        config_module, "KeyringCredentialStore", lambda: MemoryCredentialStore()
+    )
     config = ConfigManager(tmp_path / "config.json")
     for name in ("rename", "lyrics", "covers", "recognize", "albums"):
         module = importlib.import_module(f"core.cli.commands.{name}")

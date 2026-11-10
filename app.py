@@ -41,10 +41,9 @@ def main(interactive: bool = True) -> None:
 
 def tui() -> None:
     """Launch the optional terminal interface without importing it for CLI use."""
-    if sys.version_info < (3, 9):
-        raise SystemExit(
-            "The TUI requires Python 3.9 or newer. The CLI supports Python 3.8."
-        )
+    # 2026-11-09: fija en Python 3.10 el mínimo común con el llavero seguro.
+    if sys.version_info < (3, 10):
+        raise SystemExit("musren requires Python 3.10 or newer.")
     try:
         from core.tui.app import MusrenApp
     except ModuleNotFoundError as error:

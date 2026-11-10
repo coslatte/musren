@@ -15,7 +15,6 @@ from rich.progress import (
 from rich.table import Table
 
 from core.audio_processor import AudioProcessor
-from core.cli.config import get_config_manager
 from utils.dependencies import check_dependencies
 from utils.tools import (
     format_progress_desc,
@@ -69,9 +68,6 @@ def rename_run(
         )
         raise typer.Exit(1)
 
-    config = get_config_manager()
-    api_key = config.get("acoustid")
-
     audio_dir = str(directory)
     files = get_audio_files(audio_dir, recursive=recursive)
 
@@ -104,9 +100,10 @@ def rename_run(
     elif not rename_format:
         rename_format = "1"
 
+    # 2026-11-09: rename no necesita consultar el llavero de credenciales.
     processor = AudioProcessor(
         directory=audio_dir,
-        acoustid_api_key=api_key,
+        acoustid_api_key=None,
         recursive=recursive,
     )
 

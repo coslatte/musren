@@ -10,6 +10,7 @@ import threading
 import pytest
 
 from core.cli.config import ConfigManager
+from core.cli import config as config_module
 from core.tui.jobs import Job, OPERATIONS
 from core.tui.runner import Controls
 
@@ -111,6 +112,26 @@ def test_child_process_empty_directory(operation, tmp_path):
 
 
 HAS_TEXTUAL = importlib.util.find_spec("textual") is not None
+
+
+@pytest.fixture(autouse=True)
+def memory_credentials(monkeypatch):
+    # 2026-11-09: usa almacenamiento aislado en pruebas sin llavero del sistema.
+    values = {}
+
+    class MemoryCredentialStore:
+        def get_password(self, name):
+            return values.get(name)
+
+        def set_password(self, name, value):
+            values[name] = value
+
+        def delete_password(self, name):
+            return values.pop(name, None) is not None
+
+    monkeypatch.setattr(
+        config_module, "KeyringCredentialStore", lambda: MemoryCredentialStore()
+    )
 
 
 @pytest.mark.skipif(not HAS_TEXTUAL, reason="Install the tui extra for UI tests")

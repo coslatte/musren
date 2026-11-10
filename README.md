@@ -26,7 +26,7 @@ Release packages and checksums are available on the
 
 ## Install with Python
 
-The TUI requires Python 3.9 or newer. CLI-only installations support Python 3.8.
+The CLI and TUI require Python 3.10 or newer.
 From a source checkout, install the interface and launch it:
 
 ```shell

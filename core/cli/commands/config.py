@@ -1,3 +1,5 @@
+from typing import NoReturn
+
 import typer
 from rich.box import SIMPLE_HEAVY
 from rich.console import Console
@@ -11,6 +13,39 @@ config_app = typer.Typer(help="Manage configuration and API keys")
 console = Console()
 
 
+def _report_config_error(error: OSError) -> NoReturn:
+    console.print(
+        Panel(
+            f"Configuration could not be updated: {error}",
+            border_style="red",
+            title="Error",
+        )
+    )
+    raise typer.Exit(1) from error
+
+
+def _report_config_load_error(error: str) -> NoReturn:
+    console.print(
+        Panel(
+            f"Configuration could not be read: {error}",
+            border_style="red",
+            title="Error",
+        )
+    )
+    raise typer.Exit(1)
+
+
+def _report_credential_error(error: OSError) -> NoReturn:
+    console.print(
+        Panel(
+            f"Credentials could not be accessed: {error}",
+            border_style="red",
+            title="Credential Store Error",
+        )
+    )
+    raise typer.Exit(1) from error
+
+
 @config_app.command("set")
 def config_set(
     key: str = typer.Argument(..., help=f"Key to set: {', '.join(VALID_KEYS.keys())}"),
@@ -22,10 +57,14 @@ def config_set(
         raise typer.Exit(1)
 
     config = get_config_manager()
-    config.set(key, value)
+    try:
+        config.set(key, value)
+    except OSError as error:
+        _report_config_error(error)
 
+    # 2026-11-09: evita exponer el secreto recién guardado en la terminal.
     panel = Panel(
-        f"[green]Set {key}[/green] = [cyan]{value}[/cyan]",
+        f"[green]Set {key} in the OS credential store[/green]",
         border_style="green",
         title="Config Updated",
     )
@@ -44,7 +83,12 @@ def config_get(
         raise typer.Exit(1)
 
     config = get_config_manager()
-    value = config.get(key)
+    if config.load_error:
+        _report_config_load_error(config.load_error)
+    try:
+        value = config.get(key)
+    except OSError as error:
+        _report_credential_error(error)
 
     if value:
         console.print(f"[cyan]{key}[/cyan] = [white]{value}[/white]")
@@ -56,11 +100,16 @@ def config_get(
 def config_list() -> None:
     """List all configuration values and API keys."""
     config = get_config_manager()
-    keys = config.list_keys()
+    if config.load_error:
+        _report_config_load_error(config.load_error)
+    try:
+        keys = config.list_keys()
+    except OSError as error:
+        _report_credential_error(error)
 
     table = Table(title="API Keys", box=SIMPLE_HEAVY)
     table.add_column("Key", style="bold cyan")
-    table.add_column("Value", style="white")
+    table.add_column("Status", style="white")
     table.add_column("Description", style="dim")
 
     for key, description in VALID_KEYS.items():
@@ -82,7 +131,10 @@ def config_delete(
         raise typer.Exit(1)
 
     config = get_config_manager()
-    deleted = config.delete(key)
+    try:
+        deleted = config.delete(key)
+    except OSError as error:
+        _report_config_error(error)
 
     if deleted:
         panel = Panel(
@@ -104,7 +156,10 @@ def config_clear() -> None:
         return
 
     config = get_config_manager()
-    config.clear()
+    try:
+        config.clear()
+    except OSError as error:
+        _report_config_error(error)
 
     panel = Panel(
         "[green]Configuration cleared[/green]",
