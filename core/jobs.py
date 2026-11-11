@@ -6,7 +6,6 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Callable, Literal, Optional
 
-from utils.tools import get_audio_files
 
 RENAME_FORMATS = {
     "artist_title": "1",
