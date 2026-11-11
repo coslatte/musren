@@ -75,6 +75,10 @@ the worker smoke path, and the expected failure message when the credential
 service or an optional dependency is unavailable. AcoustID requires external
 `fpcalc` and an API key.
 
+The Tauri workflow runs a disposable credential write/read/delete check against
+Windows Credential Locker and macOS Keychain. It never uses or prints the
+user's AcoustID key.
+
 The current Tauri workflow does not configure installer signing or macOS
 notarization. Do not publish the desktop artifacts until the Windows installer
 is signed and the macOS app is signed and notarized. The Linux `.deb` bundle

@@ -336,8 +336,8 @@ operation adapters.
 
 ## Phase 6: Release readiness
 
-- Build a clean Arch package and verify pacman installation, packaged startup,
-  permissions, credential storage, and failure paths.
+- Build the Arch package with all declared `makepkg` dependencies installed and
+  verify pacman installation/removal on a clean Arch system.
 - Build and install the Windows NSIS and macOS DMG packages on their native
   systems; verify startup, permissions, credential storage, and failure paths.
 - Verify that macOS signing/notarization and Windows installer signing are
@@ -347,13 +347,21 @@ operation adapters.
 - Publish platform-specific installation instructions and release checks.
 
 **Progress:** the packaged Linux worker smoke check passed on Arch Linux
-x86_64, and a Tauri `.deb` bundle was built and inspected without installing
-it. Its package metadata and contents are present and use version 1.4.0. The
-Arch package was not built because local `makepkg` prerequisites, including
-`patchelf`, are missing. The local build used Python 3.14, so it does not
-verify the Python 3.10 CI baseline. Windows and macOS builds, native credential
-stores, and clean-install checks have not been run. The current Tauri workflow
-and config also have no installer signing or macOS notarization setup. These
-are blockers for the Phase 6 exit criteria.
+x86_64, and the Arch package was built from the development branch in a
+temporary checkout. `pacman` installed and removed it in an isolated root, the
+packaged application launched for a 15-second smoke interval, and the packaged
+worker smoke passed. A real Secret Service write/read/delete check passed on
+this host. `makepkg` dependency validation was skipped because some declared
+build packages are not registered on the host; a clean build with all declared
+dependencies remains necessary. The local build used Python 3.14, so it does
+not verify the Python 3.10 CI baseline.
+
+The Tauri workflow now runs on this development branch and checks native
+Windows Credential Locker and macOS Keychain persistence with a random
+temporary value. Its first run is pending after the workflow change. The
+separate general CI run exposed an unused import; that is fixed and Ruff now
+passes. Windows/macOS package and credential results remain outstanding.
+Installer signing and macOS notarization are not configured, and the repository
+has no Actions secrets for signing. These are blockers for public release.
 
 **Exit criteria:** verified release artifacts and user-facing installation docs.

@@ -3,7 +3,7 @@ name: Tauri desktop builds
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, feat/tauri-desktop-phase5]
     tags: ['v*']
   workflow_dispatch:
 
@@ -65,6 +65,9 @@ jobs:
         run: |
           python scripts/build_tauri_sidecar.py
           python scripts/smoke_tauri_worker.py
+      - name: Verify native credential store
+        if: runner.os == 'Windows' || runner.os == 'macOS'
+        run: python scripts/smoke_credentials.py
       - name: Build desktop packages
         working-directory: desktop
         run: bun run tauri build --bundles ${{ matrix.bundles }}

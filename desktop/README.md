@@ -55,10 +55,11 @@ separate release decision.
 
 AcoustID recognition requires the external `fpcalc` executable and an API key.
 Linux credential storage requires a working Secret Service or KWallet session;
-Windows Credential Locker and macOS Keychain must be verified on their native
-systems. The first history release records cover-art presence but does not copy
-artwork images. Desktop packages are not release-ready until native install,
-credential-store, and signing/notarization checks pass on Windows and macOS.
+the Tauri CI checks Windows Credential Locker and macOS Keychain on their native
+systems using a disposable random credential. The first history release records
+cover-art presence but does not copy artwork images. Desktop packages are not
+release-ready until native install, credential-store, and signing/notarization
+checks pass on Windows and macOS.
 
 ## Recommended IDE Setup
 
