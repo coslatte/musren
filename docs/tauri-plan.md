@@ -346,28 +346,26 @@ operation adapters.
   dependencies, including `fpcalc` for AcoustID.
 - Publish platform-specific installation instructions and release checks.
 
-**Progress:** the packaged Linux worker smoke check passed on Arch Linux
-x86_64, and the Arch package was built from the development branch in a
-temporary checkout. `pacman` installed and removed it in an isolated root, the
-packaged application launched for a 15-second smoke interval, and the packaged
-worker smoke passed. A real Secret Service write/read/delete check passed on
-this host. The temporary package build used `makepkg --nodeps` because several
-declared build dependencies were not registered on the host; dependency
-validation on a fully provisioned Arch system remains necessary. The local
-build used Python 3.14, so it does not verify the Python 3.10 CI baseline.
+**Progress:** workflow run 43046242659 passed for commit 1dfa845. The Arch job
+resolved all declared build dependencies in a clean Arch Linux container,
+built the pacman package from that exact commit, installed it with `pacman`,
+kept the installed app running for the 15-second smoke interval under Xvfb and
+removed it. The Windows NSIS installer and macOS DMGs for Apple Silicon and
+Intel also installed or mounted on native runners and their apps stayed open
+for the smoke interval. All three targets passed the worker smoke path and a
+disposable native credential write/read/delete check where supported. The
+workflow uploaded all four artifacts (Arch, Windows, macOS Apple Silicon, and
+macOS Intel); see the [workflow run](https://github.com/coslatte/musren/actions/runs/43046242659).
+The first macOS Intel DMG attempt hit a transient `hdiutil: Resource busy`
+while ejecting its temporary image; retrying that job passed. General CI passed
+across Windows/Linux with Python 3.10, 3.11, and 3.13 (run 43038822244). The
+release matrix contains only the agreed Arch, Windows, and macOS targets;
+Debian, Fedora, and AppImage are outside the supported scope.
 
-The final native Tauri matrix passed for Windows NSIS and macOS DMG on both
-Apple Silicon and Intel (workflow run 43043273640, commit 58950a5). Each
-platform passed the worker smoke check and a disposable credential
-write/read/delete check. The Windows installer and both DMGs were installed or
-mounted on clean runners and their apps stayed open for the smoke interval.
-The Windows and macOS artifacts were uploaded. General CI also passed across
-Windows/Linux with Python 3.10, 3.11, and 3.13 (run 43038822244). The release
-matrix now contains only the agreed Arch, Windows, and macOS targets; Debian,
-Fedora, and AppImage are outside the supported scope.
-
-Remaining release blockers are a dependency-checked Arch build, packaged
-optional-operation and failure-path checks, Windows installer signing, and
-macOS signing/notarization. The repository has no Actions secrets for signing.
+Still needed before a public release: exercise packaged optional operations and
+failure paths, configure Windows installer signing and macOS signing/notarization,
+and publish platform-specific installation instructions. No signing Actions
+secrets are configured. Artifacts from the workflow are validation outputs and
+are not yet signed release deliverables.
 
 **Exit criteria:** verified release artifacts and user-facing installation docs.

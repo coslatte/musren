@@ -67,13 +67,15 @@ bun run tauri build --bundles nsis  # Windows
 bun run tauri build --bundles dmg   # macOS
 ```
 
-Build the Arch package from a clean checkout with `makepkg -si`; inspect its
-contents and verify install, launch, and removal on a disposable Arch system.
-On Windows and macOS, install the NSIS and DMG artifacts on clean native
-systems. For all targets, verify startup, file permissions, credential storage,
-the worker smoke path, and the expected failure message when the credential
-service or an optional dependency is unavailable. AcoustID requires external
-`fpcalc` and an API key.
+The [Tauri desktop workflow](https://github.com/coslatte/musren/actions/workflows/tauri.yml)
+performs a clean Arch dependency-resolved package build, installs and removes it
+with `pacman`, and launches the installed app under Xvfb. On native Windows and
+macOS runners it builds, installs or mounts, and launches each bundle. All
+platform jobs run the worker smoke path; Windows/macOS also run a disposable
+native credential write/read/delete check. Downloadable workflow artifacts are
+validation outputs. Before release, exercise packaged optional operations and
+failure paths, including unavailable credential services and missing optional
+dependencies. AcoustID requires external `fpcalc` and an API key.
 
 The Tauri workflow runs a disposable credential write/read/delete check against
 Windows Credential Locker and macOS Keychain. It never uses or prints the
