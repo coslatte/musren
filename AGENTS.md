@@ -5,15 +5,21 @@ Use English for generated messages, documentation, and commit messages.
 
 ## Repository map
 
-- `app.py`: CLI and TUI entry points, including packaged worker dispatch.
-- `core/cli/`: command parsing, the original menu, and shared audio commands.
-- `core/tui/`: widgets, validated jobs, and the isolated processing runner.
-- `core/audio_processor.py`, `core/artwork.py`, and `core/install_covers.py`: audio operations.
-- `constants/` and `utils/`: settings, version, file discovery, and dependency checks.
+- `src/musren/entrypoint.py`: installed CLI and TUI entry points; root `app.py` is a checkout shim.
+- `src/musren/core/config.py`: shared configuration and credential access.
+- `src/musren/core/jobs.py` and `file_operations.py`: shared jobs, plans, and file movement rules.
+- `src/musren/core/cli/` and `src/musren/core/tui/`: CLI commands, terminal UI, and isolated worker.
+- `desktop/src/`: Tauri frontend; `features/history` and `features/settings` own their screens.
+- `src/musren/core/audio_processor.py`, `audio_metadata.py`, and `artwork.py`: audio processing and tag writes.
+- `src/musren/core/renaming.py`: filename rules and collision-safe renames.
+- `src/musren/core/lyrics.py` and `lyrics_tags.py`: lyrics providers and embedded-tag writes.
+- `src/musren/core/acoustid.py` and `shazam_processor.py`: audio recognition providers.
+- `src/musren/constants/` and `utils/`: settings, version, audio discovery, and dependency checks.
 - `tests/`: import checks, disposable audio fixtures, workflows, and headless UI tests.
 - `docs/`: user guides, contributor instructions, release steps, and changelog.
 - `scripts/`: installers, package validation, and portable Windows builds.
 - `pyproject.toml`: package metadata, extras, launchers, build backend, and Ruff settings.
+- `desktop/package.json` and `desktop/.prettierrc.json`: frontend commands and Prettier style.
 
 The CLI and TUI require Python 3.10+. Portable Windows builds use Python 3.13
 and PyInstaller. AcoustID also needs the external `fpcalc` binary. Optional
@@ -41,7 +47,7 @@ For environment setup, use [docs/contributing.md](docs/contributing.md).
 
 ```powershell
 py -3 -m pip install -e ".[dev,tui]"
-py -3 -c "import app; import core.audio_processor; import core.tui"
+py -3 -c "import app; import musren.core.audio_processor; import musren.core.tui"
 py -3 -m pytest -q
 ```
 

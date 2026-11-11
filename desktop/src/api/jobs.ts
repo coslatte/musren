@@ -10,7 +10,12 @@ export const RenameFormatSchema = z.enum([
 export type RenameFormat = z.infer<typeof RenameFormatSchema>;
 
 export const OperationSchema = z.enum([
-  "rename", "lyrics", "covers", "recognize", "albums", "revert",
+  "rename",
+  "lyrics",
+  "covers",
+  "recognize",
+  "albums",
+  "revert",
 ]);
 export type Operation = z.infer<typeof OperationSchema>;
 
@@ -144,7 +149,15 @@ const HistorySummarySchema = z.object({
   directory: z.string(),
   started_at: z.string().datetime({ offset: true }),
   finished_at: z.string().datetime({ offset: true }).nullable(),
-  outcome: z.enum(["running", "previewed", "success", "partial", "cancelled", "failed", "reverted"]),
+  outcome: z.enum([
+    "running",
+    "previewed",
+    "success",
+    "partial",
+    "cancelled",
+    "failed",
+    "reverted",
+  ]),
   total_files: z.number().int().nonnegative(),
   changed_files: z.number().int().nonnegative(),
   errors: z.number().int().nonnegative(),
@@ -154,16 +167,18 @@ export type HistorySummary = z.infer<typeof HistorySummarySchema>;
 
 const HistoryDetailSchema = HistorySummarySchema.extend({
   options: z.record(z.string(), z.unknown()),
-  files: z.array(z.object({
-    ordinal: z.number().int().nonnegative(),
-    path: z.string(),
-    before: z.record(z.string(), z.unknown()),
-    planned_after: z.record(z.string(), z.unknown()).nullable(),
-    after: z.record(z.string(), z.unknown()).nullable(),
-    outcome: z.string(),
-    reason: z.string().nullable(),
-    error: z.string().nullable(),
-  })),
+  files: z.array(
+    z.object({
+      ordinal: z.number().int().nonnegative(),
+      path: z.string(),
+      before: z.record(z.string(), z.unknown()),
+      planned_after: z.record(z.string(), z.unknown()).nullable(),
+      after: z.record(z.string(), z.unknown()).nullable(),
+      outcome: z.string(),
+      reason: z.string().nullable(),
+      error: z.string().nullable(),
+    }),
+  ),
 });
 export type HistoryDetail = z.infer<typeof HistoryDetailSchema>;
 
@@ -188,12 +203,16 @@ async function utility(request: {
   return UtilityResultSchema.parse(result);
 }
 
-export async function listHistory(filters: Record<string, string> = {}): Promise<HistorySummary[]> {
+export async function listHistory(
+  filters: Record<string, string> = {},
+): Promise<HistorySummary[]> {
   return (await utility({ action: "history_list", filters })).sessions ?? [];
 }
 
 export async function getHistory(sessionId: SessionId): Promise<HistoryDetail | null> {
-  return (await utility({ action: "history_detail", session_id: sessionId })).session ?? null;
+  return (
+    (await utility({ action: "history_detail", session_id: sessionId })).session ?? null
+  );
 }
 
 export async function clearHistory(): Promise<void> {
@@ -205,11 +224,17 @@ export async function getHistoryLocation(): Promise<string> {
 }
 
 export async function getCredentialStatus(): Promise<boolean> {
-  return (await utility({ action: "credential_status", key: "acoustid" })).configured ?? false;
+  return (
+    (await utility({ action: "credential_status", key: "acoustid" })).configured ??
+    false
+  );
 }
 
 export async function saveCredential(value: string): Promise<boolean> {
-  return (await utility({ action: "credential_save", key: "acoustid", value })).configured ?? false;
+  return (
+    (await utility({ action: "credential_save", key: "acoustid", value })).configured ??
+    false
+  );
 }
 
 export async function deleteCredential(): Promise<void> {

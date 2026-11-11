@@ -11,13 +11,17 @@ def test_import_app_has_main():
 
 
 def test_import_core_modules():
-    for name in ("core.audio_processor", "core.artwork", "core.install_covers"):
+    for name in (
+        "musren.core.audio_processor",
+        "musren.core.artwork",
+        "musren.core.install_covers",
+    ):
         mod = importlib.import_module(name)
         assert mod is not None, f"Failed to import {name}"
 
 
 def test_utils_dependencies_functions():
-    mod = importlib.import_module("utils.dependencies")
+    mod = importlib.import_module("musren.utils.dependencies")
     assert hasattr(mod, "check_dependencies")
     assert hasattr(mod, "check_acoustid_needed")
     assert hasattr(mod, "check_acoustid_installation")
@@ -34,7 +38,7 @@ def test_utils_dependencies_functions():
 
 
 def test_desktop_shazam_preflight_reports_missing_extra(tmp_path, monkeypatch):
-    from core import desktop_operations
+    from musren.core import desktop_operations
 
     monkeypatch.setattr(
         desktop_operations.importlib.util,
@@ -54,7 +58,7 @@ def test_desktop_shazam_preflight_reports_missing_extra(tmp_path, monkeypatch):
 
 
 def test_credential_store_rejects_unsupported_backend(monkeypatch):
-    from core.credentials import CredentialStoreError, KeyringCredentialStore
+    from musren.core.credentials import CredentialStoreError, KeyringCredentialStore
 
     backend = type("PlaintextBackend", (), {"priority": 1})()
     keyring = types.SimpleNamespace(get_keyring=lambda: backend)

@@ -3,13 +3,12 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
-from core.audio_processor import AudioProcessor
+from musren.core.renaming import safe_rename
 
 
 class TestRename(unittest.TestCase):
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
-        self.processor = AudioProcessor(self.test_dir)
 
     def tearDown(self):
         shutil.rmtree(self.test_dir)
@@ -24,7 +23,9 @@ class TestRename(unittest.TestCase):
         # _safe_rename expects absolute path for old_name if recursive, or relative if not?
         # The fix handles both. Let's pass absolute path as get_audio_files does.
 
-        new_name, changed, error = self.processor._safe_rename(filepath, filename)
+        new_name, changed, error = safe_rename(
+            self.test_dir, "Linux", filepath, filename
+        )
 
         self.assertIsNone(error)
         self.assertFalse(changed)
@@ -45,9 +46,8 @@ class TestRename(unittest.TestCase):
                 directory.mkdir()
                 filepath = directory / filename
                 filepath.write_bytes(b"unchanged audio")
-                self.processor.os_type = platform
-                new_name, changed, error = self.processor._safe_rename(
-                    str(filepath), "AC/DC - TNT.mp3"
+                new_name, changed, error = safe_rename(
+                    str(directory), platform, str(filepath), "AC/DC - TNT.mp3"
                 )
                 self.assertIsNone(error)
                 self.assertFalse(changed)
@@ -65,7 +65,9 @@ class TestRename(unittest.TestCase):
 
         # Rename "Song.mp3" to "Renamed.mp3"
         # old_name passed as absolute path
-        new_name, changed, error = self.processor._safe_rename(filepath, "Renamed.mp3")
+        new_name, changed, error = safe_rename(
+            self.test_dir, "Linux", filepath, "Renamed.mp3"
+        )
 
         self.assertIsNone(error)
         self.assertTrue(changed)
@@ -91,7 +93,9 @@ class TestRename(unittest.TestCase):
         with open(path3, "w") as f:
             f.write("content3")
 
-        new_name, changed, error = self.processor._safe_rename(path3, "Song.mp3")
+        new_name, changed, error = safe_rename(
+            self.test_dir, "Linux", path3, "Song.mp3"
+        )
 
         self.assertIsNone(error)
         self.assertTrue(changed)

@@ -1,8 +1,9 @@
 import sys
+from pathlib import Path
 
 import pytest
 
-from core.tui.runner import worker_command
+from musren.core.tui.runner import worker_command
 
 
 @pytest.mark.parametrize("frozen", [False, True])
@@ -13,14 +14,19 @@ def test_worker_launch_preserves_arguments(monkeypatch, frozen):
     expected = (
         ["musren.exe", "--_musren-worker"]
         if frozen
-        else ["python.exe", "-u", "-m", "core.tui.runner"]
+        else [
+            "python.exe",
+            "-u",
+            str(Path(__file__).resolve().parents[1] / "app.py"),
+            "--_musren-worker",
+        ]
     )
     assert worker_command(arguments) == expected + arguments
 
 
 def test_internal_worker_dispatch(monkeypatch):
-    import app
-    from core.tui import runner
+    from musren import entrypoint as app
+    from musren.core.tui import runner
 
     seen = []
     monkeypatch.setattr(

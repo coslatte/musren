@@ -6,12 +6,12 @@ import sys
 import pytest
 from typer.testing import CliRunner
 
-from core.audio_processor import AudioProcessor
-from core.cli.app import app
-from core.cli.config import ConfigManager
-from core.cli import config as config_module
-from core.tui.jobs import Job
-from utils.tools import PauseManager
+from musren.core.audio_processor import AudioProcessor
+from musren.core.cli.app import app
+from musren.core.config import ConfigManager
+from musren.core import config as config_module
+from musren.core.tui.jobs import Job
+from musren.core.cli.pause import PauseManager
 
 
 @pytest.fixture
@@ -60,7 +60,7 @@ def offline_commands(monkeypatch, tmp_path):
     )
     config = ConfigManager(tmp_path / "config.json")
     for name in ("rename", "lyrics", "covers", "recognize", "albums"):
-        module = importlib.import_module(f"core.cli.commands.{name}")
+        module = importlib.import_module(f"musren.core.cli.commands.{name}")
         if hasattr(module, "check_dependencies"):
             monkeypatch.setattr(module, "check_dependencies", lambda **kwargs: True)
         if hasattr(module, "get_config_manager"):
@@ -70,9 +70,9 @@ def offline_commands(monkeypatch, tmp_path):
         monkeypatch.setattr(module, "get_pause_manager", lambda: pause)
     # External services must never be called in this suite.
     monkeypatch.setattr(
-        AudioProcessor,
-        "_recognize_song",
-        lambda self, path: {"status": False, "message": "No match"},
+        importlib.import_module("musren.core.acoustid"),
+        "recognize_song",
+        lambda path, key, system: {"status": False, "message": "No match"},
     )
     monkeypatch.setattr(
         AudioProcessor,
@@ -143,8 +143,8 @@ def test_recognition_updates_real_tags(tagged_mp3, tmp_path, monkeypatch, succes
 
     source = tagged_mp3()
     monkeypatch.setattr(
-        AudioProcessor,
-        "_recognize_song",
+        importlib.import_module("musren.core.acoustid"),
+        "recognize_song",
         lambda *args: {
             "status": success,
             "artist": "Recognized artist",
@@ -164,7 +164,7 @@ def test_recognition_updates_real_tags(tagged_mp3, tmp_path, monkeypatch, succes
 
 def test_recursive_covers_real_embedding_and_skip(tagged_mp3, tmp_path, monkeypatch):
     from mutagen.id3 import ID3
-    from core.artwork import AlbumArtManager
+    from musren.core.artwork import AlbumArtManager
 
     source = tagged_mp3("nested/track.mp3")
     monkeypatch.setattr(
@@ -186,7 +186,7 @@ def test_recursive_covers_real_embedding_and_skip(tagged_mp3, tmp_path, monkeypa
 
 
 def test_missing_dependencies_noninteractive(monkeypatch, capsys):
-    from utils import dependencies
+    from musren.utils import dependencies
 
     monkeypatch.setattr(dependencies.importlib.util, "find_spec", lambda name: None)
     monkeypatch.setattr("builtins.input", lambda *args: pytest.fail("Must not prompt"))
@@ -195,7 +195,7 @@ def test_missing_dependencies_noninteractive(monkeypatch, capsys):
 
 
 def test_shazam_does_not_require_acoustid(monkeypatch):
-    from utils import dependencies
+    from musren.utils import dependencies
 
     seen = []
     monkeypatch.setattr(
@@ -213,7 +213,7 @@ def test_shazam_does_not_require_acoustid(monkeypatch):
 def test_app_preserves_argument_boundaries(monkeypatch, tmp_path):
     import app as entry
 
-    cli_module = importlib.import_module("core.cli.app")
+    cli_module = importlib.import_module("musren.core.cli.app")
     folder = tmp_path / "Music with spaces"
     folder.mkdir()
     monkeypatch.setattr(
@@ -226,7 +226,7 @@ def test_app_preserves_argument_boundaries(monkeypatch, tmp_path):
 
 
 def test_cli_help_and_unknown_command(monkeypatch):
-    from core.cli.app import cli
+    from musren.core.cli.app import cli
 
     monkeypatch.setattr(sys, "argv", ["musren", "rename", "--help"])
     with pytest.raises(SystemExit) as result:
@@ -241,12 +241,12 @@ def test_cli_help_and_unknown_command(monkeypatch):
 def test_lyrics_recognition_and_covers_combined(tagged_mp3, tmp_path, monkeypatch):
     from mutagen import File
     from mutagen.id3 import ID3
-    from core.artwork import AlbumArtManager
+    from musren.core.artwork import AlbumArtManager
 
     source = tagged_mp3()
     monkeypatch.setattr(
-        AudioProcessor,
-        "_recognize_song",
+        importlib.import_module("musren.core.acoustid"),
+        "recognize_song",
         lambda *args: {
             "status": True,
             "artist": "New artist",
@@ -281,7 +281,7 @@ def test_lyrics_recognition_and_covers_combined(tagged_mp3, tmp_path, monkeypatc
 def test_covers_failure_and_lyrics_failure_are_reported(
     tagged_mp3, tmp_path, monkeypatch
 ):
-    from core.artwork import AlbumArtManager
+    from musren.core.artwork import AlbumArtManager
 
     tagged_mp3()
     monkeypatch.setattr(AlbumArtManager, "fetch_album_cover", lambda *args: None)
@@ -295,7 +295,7 @@ def test_covers_failure_and_lyrics_failure_are_reported(
 
 
 def test_shazam_backend(tagged_mp3, tmp_path, monkeypatch):
-    from core.shazam_processor import ShazamProcessor
+    from musren.core.shazam_processor import ShazamProcessor
     from mutagen import File
 
     source = tagged_mp3()
@@ -311,7 +311,9 @@ def test_shazam_backend(tagged_mp3, tmp_path, monkeypatch):
         },
     )
     monkeypatch.setattr(
-        AudioProcessor, "_recognize_song", lambda *args: pytest.fail("Wrong backend")
+        importlib.import_module("musren.core.acoustid"),
+        "recognize_song",
+        lambda *args: pytest.fail("Wrong backend"),
     )
     result = CliRunner().invoke(
         app, Job("recognize", tmp_path, shazam=True).arguments()
@@ -335,7 +337,7 @@ def test_tui_actual_rename_and_undo(tagged_mp3, tmp_path, keep):
     pytest.importorskip("textual")
     import asyncio
     from textual.widgets import Input, Select
-    from core.tui.app import Confirmation, MusrenApp
+    from musren.core.tui.app import Confirmation, MusrenApp
 
     source = tagged_mp3()
     before = source.read_bytes()
@@ -373,17 +375,12 @@ def test_child_cancel_at_rename_confirmation(tagged_mp3, tmp_path):
     import queue
     import subprocess
     import threading
-    from core.tui.runner import EVENT_PREFIX
+    from musren.core.tui.runner import EVENT_PREFIX
+    from musren.core.tui.runner import worker_command
 
     source = tagged_mp3()
     process = subprocess.Popen(
-        [
-            sys.executable,
-            "-u",
-            "-m",
-            "core.tui.runner",
-            *Job("rename", tmp_path, rename_format="2").arguments(),
-        ],
+        worker_command(Job("rename", tmp_path, rename_format="2").arguments()),
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -427,9 +424,10 @@ def test_child_missing_dependency_never_prompts(tmp_path):
     code = """
 import importlib.util
 import sys
+sys.path.insert(0, 'src')
 original = importlib.util.find_spec
 importlib.util.find_spec = lambda name: None if name == 'syncedlyrics' else original(name)
-from core.tui.runner import main
+from musren.core.tui.runner import main
 main()
 """
     process = subprocess.Popen(

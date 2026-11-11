@@ -42,7 +42,7 @@ jobs:
         run: |
           musren --version
           musren --help
-          python -c "from core.tui.app import MusrenApp; print('TUI import passed')"
+          python -c "from musren.core.tui.app import MusrenApp; print('TUI import passed')"
 
   cli-compatibility:
     runs-on: ubuntu-latest

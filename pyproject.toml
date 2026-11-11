@@ -33,8 +33,8 @@ desktop = ["pyinstaller>=6.22.0"]
 dev = ["pytest>=7", "ruff==0.15.0", "build>=1", "twine>=5"]
 
 [project.scripts]
-musren = "app:main"
-musren-tui = "app:tui"
+musren = "musren.entrypoint:main"
+musren-tui = "musren.entrypoint:tui"
 
 [project.urls]
 Homepage = "https://github.com/coslatte/musren"
@@ -42,12 +42,13 @@ Releases = "https://github.com/coslatte/musren/releases"
 Issues = "https://github.com/coslatte/musren/issues"
 
 [tool.setuptools]
-py-modules = ["app"]
-packages = ["constants", "core", "core.cli", "core.cli.commands", "core.tui", "utils"]
 include-package-data = true
 
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [tool.setuptools.dynamic]
-version = { attr = "constants.info.MUSIC_RENAMER_VERSION" }
+version = { attr = "musren.constants.info.MUSIC_RENAMER_VERSION" }
 
 [tool.ruff]
 target-version = "py310"
@@ -56,4 +57,7 @@ target-version = "py310"
 select = ["E4", "E7", "E9", "F"]
 
 [tool.uv]
-cache-keys = [{ file = "pyproject.toml" }, { file = "constants/info.py" }]
+cache-keys = [{ file = "pyproject.toml" }, { file = "src/musren/constants/info.py" }]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

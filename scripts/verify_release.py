@@ -14,14 +14,18 @@ def verify(dist: Path, tag: str) -> None:
     version = tag[1:] if tag.startswith("v") else tag
     wheel = dist / f"musren-{version}-py3-none-any.whl"
     source = dist / f"musren-{version}.tar.gz"
-    required = {f"core/tui/{name}.py" for name in ("__init__", "app", "jobs", "runner")}
+    required = {
+        f"musren/core/tui/{name}.py" for name in ("__init__", "app", "jobs", "runner")
+    }
+    required.add("musren/entrypoint.py")
     with zipfile.ZipFile(wheel) as archive:
         names = set(archive.namelist())
         assert required <= names, "TUI modules missing from the wheel"
+        assert "app.py" not in names, "Checkout shim must not be a wheel entry point"
         info = f"musren-{version}.dist-info"
         metadata = Parser().parsestr(archive.read(f"{info}/METADATA").decode())
         assert metadata["Version"] == version, "Tag and package version differ"
-        constants = ast.parse(archive.read("constants/info.py").decode())
+        constants = ast.parse(archive.read("musren/constants/info.py").decode())
         runtime_version = next(
             ast.literal_eval(node.value)
             for node in constants.body
@@ -33,7 +37,8 @@ def verify(dist: Path, tag: str) -> None:
         )
         assert runtime_version == version, "CLI and package version differ"
         entries = archive.read(f"{info}/entry_points.txt").decode()
-        assert "musren = app:main" in entries and "musren-tui = app:tui" in entries
+        assert "musren = musren.entrypoint:main" in entries
+        assert "musren-tui = musren.entrypoint:tui" in entries
         assert "tui" in metadata.get_all("Provides-Extra", [])
         assert not any(Path(name).name == ".env" for name in names), (
             "Environment file included"
@@ -41,7 +46,8 @@ def verify(dist: Path, tag: str) -> None:
     with tarfile.open(source) as archive:
         names = set(archive.getnames())
         root = f"musren-{version}/"
-        assert all(root + name in names for name in required)
+        assert all(root + "src/" + name in names for name in required)
+        assert root + "app.py" in names, "Source archive missing checkout launcher"
         assert root + "docs/tui.md" in names and root + "docs/changelog.md" in names
         assert root + "pyproject.toml" in names, (
             "Source archive missing project settings"

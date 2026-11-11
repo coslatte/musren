@@ -30,7 +30,7 @@ or `shazam`. Install the `desktop` extra to build the Python worker sidecar. The
 ```shell
 python app.py --tui
 python app.py --help
-python -c "import app; import core.audio_processor; import core.tui"
+python -c "import app; import musren.core.audio_processor; import musren.core.tui"
 python -m pytest -q
 python -m ruff format .
 python -m ruff check .
@@ -40,6 +40,10 @@ The tests use temporary tagged audio and controlled service responses. Headless
 TUI tests run when Textual is installed. Tests do not validate live API availability
 or account credentials. Check those separately using your own files.
 
+For frontend changes, run `bun run format` from `desktop/` to format the UI and
+`bun run format:check` to verify its formatting. `bun run build` runs TypeScript
+checks and creates the production frontend bundle.
+
 Before every commit or PR, follow the mandatory checks in
 [AGENTS.md](../AGENTS.md). Keep optional imports lazy and avoid import-time
 network calls or mutations.
@@ -48,24 +52,29 @@ network calls or mutations.
 
 | Path | Responsibility |
 | --- | --- |
-| `app.py` | Public CLI and TUI launchers |
-| `core/cli/` | CLI commands and original menu |
-| `core/tui/` | Interface, job arguments, and isolated workers |
-| `core/audio_processor.py` | Metadata, recognition, lyrics, and file renaming |
-| `core/lyrics.py` | Synchronized-lyrics provider chain (LRCLIB, Paxsenix, syncedlyrics) |
-| `core/artwork.py` | Artwork retrieval and embedding |
-| `core/install_covers.py` | Batch artwork installation |
-| `constants/` | Settings and the authoritative package version |
-| `utils/` | File discovery and dependency checks |
+| `src/musren/entrypoint.py` | Installed CLI and TUI launchers |
+| `app.py` | Checkout shim for direct `python app.py` use |
+| `src/musren/core/cli/` | CLI commands and original menu |
+| `src/musren/core/tui/` | Interface, job arguments, and isolated workers |
+| `src/musren/core/audio_processor.py` | Audio processing entry point |
+| `src/musren/core/lyrics.py` | Synchronized-lyrics provider chain |
+| `src/musren/core/artwork.py` | Artwork retrieval and embedding |
+| `src/musren/core/install_covers.py` | Batch artwork installation |
+| `src/musren/constants/` | Settings and package version |
+| `src/musren/utils/` | Audio file discovery and dependency checks |
+| `desktop/src/App.tsx` | Desktop shell and active job lifecycle |
+| `desktop/src/features/` | Operation labels and history/settings screens |
+| `packaging/arch/` | Arch Linux VCS package recipe and generated metadata |
 | `tests/` | Workflow, import, and layout checks |
 | `docs/` | User and contributor guides |
 | `scripts/` | Installation, builds, and artifact checks |
 | `pyproject.toml` | Metadata, dependencies, extras, entry points, and Ruff |
+| `desktop/package.json` | Frontend scripts and dependencies, including Prettier |
 | `uv.lock` | Resolved dependencies for optional uv workflows |
 | `MANIFEST.in` | Source archive contents |
 | `.github/workflows/` | Cross-platform CI and releases |
 
-The package version comes from `constants/info.py`. Setuptools reads that value
+The package version comes from `src/musren/constants/info.py`. Setuptools reads that value
 through `pyproject.toml`; there is no second version value to update.
 
 If you use uv, refresh the lock after changing dependencies or the version:

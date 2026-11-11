@@ -11,8 +11,8 @@ async def smoke_tui() -> None:
     from mutagen.id3 import ID3, TIT2, TPE1
     from textual.widgets import Input, Select, Static
 
-    from core.cli.config import ConfigManager
-    from core.tui.app import Confirmation, MusrenApp
+    from musren.core.config import ConfigManager
+    from musren.core.tui.app import Confirmation, MusrenApp
 
     with tempfile.TemporaryDirectory(prefix="musren-smoke-") as temporary:
         folder = Path(temporary)

@@ -1,8 +1,8 @@
 # musren
 
-Organize a local music library from a terminal. musren renames audio files from
-their metadata, fetches lyrics and artwork, recognizes tracks, and groups albums
-into folders. Use the terminal interface or the existing CLI.
+Organize a local music library with musren's desktop app, terminal interface, or
+CLI. musren renames audio files from their metadata, fetches lyrics and artwork,
+recognizes tracks, and groups albums into folders.
 
 ## Preview
 
@@ -23,6 +23,17 @@ The executable also accepts CLI commands:
 
 Release packages and checksums are available on the
 [GitHub Releases page](https://github.com/coslatte/musren/releases).
+
+## Install the desktop app on Arch Linux
+
+After the AUR package is published, install it with an AUR helper:
+
+```shell
+yay -S musren-desktop-git
+```
+
+The package builds the desktop app from the upstream `main` branch. Review the
+[`PKGBUILD`](packaging/arch/PKGBUILD) before installing it.
 
 ## Install with Python
 

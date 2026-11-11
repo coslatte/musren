@@ -1,6 +1,6 @@
-pkgbase = musren-desktop
-	pkgdesc = Desktop audio file organizer
-	pkgver = 1.4.0.r2.gdfaa71b
+pkgbase = musren-desktop-git
+	pkgdesc = Desktop audio file organizer (Git version)
+	pkgver = 1.4.0.r15.g7951beb
 	pkgrel = 1
 	url = https://github.com/coslatte/musren
 	arch = x86_64
@@ -10,19 +10,17 @@ pkgbase = musren-desktop
 	makedepends = curl
 	makedepends = file
 	makedepends = git
-	makedepends = gtk3
-	makedepends = libappindicator-gtk3
+	makedepends = libappindicator
 	makedepends = librsvg
 	makedepends = openssl
 	makedepends = patchelf
 	makedepends = python
 	makedepends = python-pip
 	makedepends = rust
-	makedepends = webkit2gtk-4.1
 	makedepends = wget
 	depends = gtk3
 	depends = webkit2gtk-4.1
 	source = musren::git+https://github.com/coslatte/musren.git#branch=main
 	sha256sums = SKIP
 
-pkgname = musren-desktop
+pkgname = musren-desktop-git

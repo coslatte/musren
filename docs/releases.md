@@ -6,7 +6,7 @@ installation instructions are in [the README](../README.md).
 
 ## Prepare a new version
 
-1. Update `MUSIC_RENAMER_VERSION` in `constants/info.py`.
+1. Update `MUSIC_RENAMER_VERSION` in `src/musren/constants/info.py`.
 2. Add the changes to [changelog.md](changelog.md).
 3. Refresh `uv.lock` with `uv lock`.
 4. Run the checks in [contributing.md](contributing.md).
@@ -22,7 +22,7 @@ repository root:
 ```powershell
 python -m build --outdir dist/release
 python -m twine check dist/release/*.whl dist/release/*.tar.gz
-$releaseVersion = python -c "from constants.info import MUSIC_RENAMER_VERSION; print(MUSIC_RENAMER_VERSION)"
+$releaseVersion = python -c "from musren.constants.info import MUSIC_RENAMER_VERSION; print(MUSIC_RENAMER_VERSION)"
 python scripts/verify_release.py --tag "v$releaseVersion" --dist dist/release
 ```
 
@@ -66,6 +66,23 @@ bun run tauri build --bundles deb   # Linux bundle used by the Arch PKGBUILD
 bun run tauri build --bundles nsis  # Windows
 bun run tauri build --bundles dmg   # macOS
 ```
+
+The Arch recipe is the VCS package `musren-desktop-git`. It builds from the
+upstream `main` branch and derives `pkgver` from Git tags. After publication,
+install it with `yay -S musren-desktop-git`. The package builds from source and
+does not use the unsigned CI bundle.
+
+Before changing the AUR recipe, build and inspect it from `packaging/arch/`:
+
+```sh
+makepkg --printsrcinfo > .SRCINFO
+makepkg --verifysource
+makepkg --syncdeps --cleanbuild
+namcap PKGBUILD
+```
+
+Copy `PKGBUILD` and `.SRCINFO` to the AUR repository. Commit both files and push
+to the AUR `master` branch. Update `.SRCINFO` whenever package metadata changes.
 
 The [Tauri desktop workflow](https://github.com/coslatte/musren/actions/workflows/tauri.yml)
 builds the Arch package with its declared dependencies, installs and removes
@@ -113,7 +130,7 @@ Then tag the revision with the new version:
 
 ```powershell
 git push origin main
-$releaseVersion = python -c "from constants.info import MUSIC_RENAMER_VERSION; print(MUSIC_RENAMER_VERSION)"
+$releaseVersion = python -c "from musren.constants.info import MUSIC_RENAMER_VERSION; print(MUSIC_RENAMER_VERSION)"
 git tag -a "v$releaseVersion" -m "musren $releaseVersion"
 git push origin "v$releaseVersion"
 ```

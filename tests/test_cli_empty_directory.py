@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import core.cli_typer as cli_typer
+import musren.core.cli_typer as cli_typer
 
 
 class _NullStatus:

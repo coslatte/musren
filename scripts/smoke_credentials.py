@@ -2,7 +2,7 @@
 
 import secrets
 
-from core.credentials import KeyringCredentialStore
+from musren.core.credentials import KeyringCredentialStore
 
 
 def main() -> None:

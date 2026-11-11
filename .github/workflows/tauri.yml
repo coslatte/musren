@@ -28,7 +28,7 @@ jobs:
               useradd --create-home builder
               chown -R builder:builder /workspace
               su builder -c "cd /workspace/packaging/arch && MUSREN_SOURCE_REF='$MUSREN_SOURCE_REF' makepkg --noconfirm"
-              package=$(find /workspace/packaging/arch -maxdepth 1 -type f -name "musren-desktop-*.pkg.tar.zst" ! -name "*-debug-*" -print -quit)
+              package=$(find /workspace/packaging/arch -maxdepth 1 -type f -name "musren-desktop-git-*.pkg.tar.zst" ! -name "*-debug-*" -print -quit)
               mkdir -p /workspace/artifacts
               cp "$package" /workspace/artifacts/
               pacman -U --noconfirm "$package"
@@ -37,7 +37,7 @@ jobs:
               result=$?
               set -e
               test "$result" -eq 124
-              pacman -R --noconfirm musren-desktop
+              pacman -R --noconfirm musren-desktop-git
             '
       - uses: actions/upload-artifact@v4
         with:

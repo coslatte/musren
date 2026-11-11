@@ -4,7 +4,7 @@ import types
 import pytest
 import requests
 
-import core.lyrics as lyrics
+import musren.core.lyrics as lyrics
 
 
 class _Response:
