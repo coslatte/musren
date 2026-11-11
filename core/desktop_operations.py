@@ -83,7 +83,11 @@ def prepare_operation(
 ) -> dict[str, Any]:
     """Create a stable file plan and token for preview confirmation."""
     if request.operation == "recognize" and request.options.get("provider") == "shazam":
-        if importlib.util.find_spec("shazamio") is None:
+        try:
+            shazam_available = importlib.util.find_spec("shazamio") is not None
+        except (ImportError, ValueError):
+            shazam_available = False
+        if not shazam_available:
             raise RuntimeError(
                 "Shazam recognition requires the optional dependency. Install it with pip install 'musren[shazam]'."
             )

@@ -89,15 +89,16 @@ The Tauri workflow runs a disposable credential write/read/delete check against
 Windows Credential Locker and macOS Keychain. It never uses or prints the
 user's AcoustID key.
 
-Signing setup requires owner-provided credentials stored as GitHub Actions
-secrets, never committed to the repository: a Windows code-signing certificate
-and password; an Apple Developer signing identity, App Store Connect API key,
-and notarization credentials. Add these only to protected repository or
-environment secrets, restrict deployment to tagged releases, and have the
-native runner sign, notarize, staple, then verify signatures before upload.
-Do not publish unsigned desktop artifacts. The current Tauri workflow does
-not yet perform those steps. The Linux `.deb` bundle is an intermediate input
-to the Arch package, not a supported Debian release.
+Signing needs owner-provided credentials in protected GitHub Actions
+environment secrets, never in the repository: a Windows code-signing
+certificate and password; an Apple Developer signing identity, App Store
+Connect API key, and notarization credentials. Configure a protected release
+environment, then add signing steps to the native Windows/macOS jobs. The jobs
+must sign, notarize and staple the Mac app, verify signatures, and only then
+upload release packages. No local Windows installation is needed. Do not
+publish unsigned desktop artifacts. The current workflow does not yet perform
+signing. The Linux `.deb` bundle is an intermediate input to the Arch package,
+not a supported Debian release.
 
 The first history release stores cover-art presence without copying artwork
 images. History remains local and excludes credentials and full audio files.

@@ -1,4 +1,8 @@
 import importlib
+import sys
+import types
+
+import pytest
 
 
 def test_import_app_has_main():
@@ -27,3 +31,34 @@ def test_utils_dependencies_functions():
     assert isinstance(res, tuple) and len(res) == 2
     assert isinstance(res[0], bool)
     assert isinstance(res[1], str)
+
+
+def test_desktop_shazam_preflight_reports_missing_extra(tmp_path, monkeypatch):
+    from core import desktop_operations
+
+    monkeypatch.setattr(
+        desktop_operations.importlib.util,
+        "find_spec",
+        lambda name: None if name == "shazamio" else importlib.util.find_spec(name),
+    )
+    request = desktop_operations.parse_operation_request(
+        {
+            "operation": "recognize",
+            "directory": str(tmp_path),
+            "options": {"provider": "shazam"},
+        }
+    )
+
+    with pytest.raises(RuntimeError, match=r"musren\[shazam\]"):
+        desktop_operations.prepare_operation(request)
+
+
+def test_credential_store_rejects_unsupported_backend(monkeypatch):
+    from core.credentials import CredentialStoreError, KeyringCredentialStore
+
+    backend = type("PlaintextBackend", (), {"priority": 1})()
+    keyring = types.SimpleNamespace(get_keyring=lambda: backend)
+    monkeypatch.setitem(sys.modules, "keyring", keyring)
+
+    with pytest.raises(CredentialStoreError, match="No supported OS credential"):
+        KeyringCredentialStore().get_password("smoke")

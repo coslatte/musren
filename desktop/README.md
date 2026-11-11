@@ -4,18 +4,14 @@ This is the React + TypeScript desktop shell for musren, built with Tauri and Vi
 
 ## Install
 
-- **Arch Linux x86_64:** download the `musren-arch-x86_64-pacman` artifact
-  from a successful Tauri workflow run, extract the `.pkg.tar.zst`, then run
-  `sudo pacman -U ./musren-desktop-*.pkg.tar.zst`.
-- **Windows 10+:** download and run the NSIS installer from a successful
-  workflow run. The current installer is unsigned, so Windows may show a
-  security prompt.
-- **macOS 11+:** download the DMG matching Apple Silicon or Intel, open it,
-  then drag `musren` to Applications. Current builds are unsigned and
-  unnotarized; Gatekeeper may block them. Do not bypass this for public use.
+Use the signed packages attached to a GitHub release. The current CI artifacts
+are for validation and are not signed for public distribution.
 
-These CI artifacts are for validation. Wait for signed Windows/macOS release
-packages before distributing them to users.
+- **Arch Linux x86_64:** download the pacman package and run
+  `sudo pacman -U ./musren-desktop-*.pkg.tar.zst`.
+- **Windows 10+:** download and run the signed NSIS installer.
+- **macOS 11+:** download the DMG for Apple Silicon or Intel, open it, and drag
+  musren to Applications. Open it normally after notarization.
 
 ## Development
 
@@ -68,8 +64,9 @@ They are experimental and are not built or published for the supported release.
 `pkgver` aligned with the repository release tag. AUR publication remains a
 separate release decision.
 
-AcoustID requires the `recognition` extra, `fpcalc` on `PATH`, and an API key.
-Shazam requires the `shazam` extra; lyrics require the `lyrics` extra. Linux
+AcoustID recognition requires the `recognition` extra, `fpcalc` on `PATH`, and
+an API key. Shazam recognition requires the `shazam` extra; lyrics require the
+`lyrics` extra. Linux
 credential storage requires a working Secret Service or KWallet session;
 the Tauri CI checks Windows Credential Locker and macOS Keychain on their native
 systems using a disposable random credential. The first history release records
