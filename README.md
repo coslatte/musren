@@ -24,6 +24,17 @@ The executable also accepts CLI commands:
 Release packages and checksums are available on the
 [GitHub Releases page](https://github.com/coslatte/musren/releases).
 
+## Install the desktop app on Arch Linux
+
+After the AUR package is published, install it with an AUR helper:
+
+```shell
+yay -S musren-desktop-git
+```
+
+The package builds the desktop app from the upstream `main` branch. Review the
+[`PKGBUILD`](packaging/arch/PKGBUILD) before installing it.
+
 ## Install with Python
 
 The CLI and TUI require Python 3.10 or newer.

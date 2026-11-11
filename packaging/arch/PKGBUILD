@@ -1,13 +1,13 @@
-# 2026-11-09: solicitud: completar la receta de paquete arch de la fase 2.
-pkgname=musren-desktop
-pkgver=1.4.0.r2.gdfaa71b
+# Maintainer: cosLatte <129236813+coslatte@users.noreply.github.com>
+pkgname=musren-desktop-git
+pkgver=1.4.0.r15.g7951beb
 pkgrel=1
-pkgdesc='Desktop audio file organizer'
+pkgdesc='Desktop audio file organizer (Git version)'
 arch=('x86_64')
 url='https://github.com/coslatte/musren'
 license=('MIT')
 depends=('gtk3' 'webkit2gtk-4.1')
-makedepends=('base-devel' 'bun' 'curl' 'file' 'git' 'gtk3' 'libappindicator-gtk3' 'librsvg' 'openssl' 'patchelf' 'python' 'python-pip' 'rust' 'webkit2gtk-4.1' 'wget')
+makedepends=('base-devel' 'bun' 'curl' 'file' 'git' 'libappindicator' 'librsvg' 'openssl' 'patchelf' 'python' 'python-pip' 'rust' 'wget')
 _musren_source_ref="${MUSREN_SOURCE_REF:-branch=main}"
 source=("musren::git+https://github.com/coslatte/musren.git#${_musren_source_ref}")
 sha256sums=('SKIP')
