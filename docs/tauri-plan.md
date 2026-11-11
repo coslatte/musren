@@ -351,17 +351,22 @@ x86_64, and the Arch package was built from the development branch in a
 temporary checkout. `pacman` installed and removed it in an isolated root, the
 packaged application launched for a 15-second smoke interval, and the packaged
 worker smoke passed. A real Secret Service write/read/delete check passed on
-this host. `makepkg` dependency validation was skipped because some declared
-build packages are not registered on the host; a clean build with all declared
-dependencies remains necessary. The local build used Python 3.14, so it does
-not verify the Python 3.10 CI baseline.
+this host. The temporary package build used `makepkg --nodeps` because several
+declared build dependencies were not registered on the host; dependency
+validation on a fully provisioned Arch system remains necessary. The local
+build used Python 3.14, so it does not verify the Python 3.10 CI baseline.
 
-The Tauri workflow now runs on this development branch and checks native
-Windows Credential Locker and macOS Keychain persistence with a random
-temporary value. Its first run is pending after the workflow change. The
-separate general CI run exposed an unused import; that is fixed and Ruff now
-passes. Windows/macOS package and credential results remain outstanding.
-Installer signing and macOS notarization are not configured, and the repository
-has no Actions secrets for signing. These are blockers for public release.
+The native Tauri jobs passed for Windows NSIS and macOS DMG on both Apple
+Silicon and Intel (workflow run 43040274045, commit 44f1242). Each platform
+passed the worker smoke check and a disposable credential write/read/delete
+check. The Windows installer and both DMGs were installed or mounted on clean
+runners and their apps stayed open for the smoke interval. General CI also
+passed across Windows/Linux with Python 3.10, 3.11, and 3.13 (run 43038822244).
+The release matrix now contains only the agreed Arch, Windows, and macOS
+targets; Debian, Fedora, and AppImage are outside the supported scope.
+
+Remaining release blockers are a dependency-checked Arch build, packaged
+optional-operation and failure-path checks, Windows installer signing, and
+macOS signing/notarization. The repository has no Actions secrets for signing.
 
 **Exit criteria:** verified release artifacts and user-facing installation docs.

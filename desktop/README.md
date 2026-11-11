@@ -44,8 +44,8 @@ The first desktop release targets Arch Linux x86_64, Windows 10+, and macOS
 for pacman; it does not make Debian a supported target. AUR publication remains
 a separate release decision.
 
-The existing CI also creates Debian, RPM, and AppImage artifacts from the
-packaging spike. They are experimental and outside the supported release scope.
+The initial packaging spike also produced Debian, RPM, and AppImage artifacts.
+They are experimental and are not built or published for the supported release.
 
 ## Arch package
 
