@@ -150,11 +150,12 @@ if __name__ == "__main__":
             capture_output=True,
             text=True,
         ).stdout.strip()
+        extension = ".exe" if os.name == "nt" else ""
         args.worker = (
             Path(__file__).resolve().parents[1]
             / "desktop"
             / "src-tauri"
             / "binaries"
-            / f"musren-worker-{triple}"
+            / f"musren-worker-{triple}{extension}"
         )
     smoke(args.worker.resolve())
