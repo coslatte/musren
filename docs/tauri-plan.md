@@ -328,18 +328,32 @@ Arch Linux, Windows, and macOS in Phase 6.
 credential-store behavior on Arch Linux, Windows, and macOS remain in Phase 6.
 
 **Carried decisions for Phase 6:** history currently records cover presence,
-not image thumbnails. Decide whether image previews justify extra local storage,
-and set retention/size limits if they do. Platform-specific keychain behavior,
-packaged optional dependencies, and clean-install paths also remain release
-checks. CLI/TUI behavior was not changed by the desktop operation adapters.
+not image thumbnails. The first release will retain this behavior: it will not
+copy artwork into history. This avoids duplicate local image storage; history
+shows whether artwork was present, while the processed audio file remains the
+source for the current cover. CLI/TUI behavior was not changed by the desktop
+operation adapters.
 
 ## Phase 6: Release readiness
 
-- Resolve the carried history-artwork and retention decision before release.
-- Complete the Phase 2 cross-platform checks: clean installs, packaged startup,
-  permissions, credential storage, and failure paths on Arch Linux, Windows,
-  and macOS.
-- Document installation, optional dependencies, and known limitations.
-- Prepare platform-specific packages and release checks.
+- Build a clean Arch package and verify pacman installation, packaged startup,
+  permissions, credential storage, and failure paths.
+- Build and install the Windows NSIS and macOS DMG packages on their native
+  systems; verify startup, permissions, credential storage, and failure paths.
+- Verify that macOS signing/notarization and Windows installer signing are
+  configured before publishing public release artifacts.
+- Exercise packaged optional operations and document their external
+  dependencies, including `fpcalc` for AcoustID.
+- Publish platform-specific installation instructions and release checks.
+
+**Progress:** the packaged Linux worker smoke check passed on Arch Linux
+x86_64, and a Tauri `.deb` bundle was built and inspected without installing
+it. Its package metadata and contents are present and use version 1.4.0. The
+Arch package was not built because local `makepkg` prerequisites, including
+`patchelf`, are missing. The local build used Python 3.14, so it does not
+verify the Python 3.10 CI baseline. Windows and macOS builds, native credential
+stores, and clean-install checks have not been run. The current Tauri workflow
+and config also have no installer signing or macOS notarization setup. These
+are blockers for the Phase 6 exit criteria.
 
 **Exit criteria:** verified release artifacts and user-facing installation docs.

@@ -160,10 +160,10 @@ visible in the history.
 
 For each changed item, show the before and after values relevant to the
 operation: old/new path or filename, metadata fields, lyrics content, cover
-art, or album destination. Preserve the values as they were at the time of the
-job so later edits do not rewrite the historical view. Do not duplicate full
-audio files. Store the small changed metadata snapshots and local artwork
-previews needed to inspect the recorded changes.
+presence, or album destination. Preserve the values as they were at the time of
+the job so later edits do not rewrite the historical view. Do not duplicate
+full audio files or artwork images. The first release records whether cover
+art was present; it does not preserve an image preview.
 
 Keep records and artwork snapshots on the device. Never include credentials in
 history. Show the storage location in settings and provide a clear-history
@@ -180,8 +180,9 @@ rename session, not deletion of the original record.
   ISO 8601 details.
 - The stored preview and per-file result make planned and actual changes
   distinguishable, including skips, failures, and partial completion.
-- History shows the before/after values and artwork previews as they existed
-  when the operation ran, without storing full audio files or secrets.
+- History shows the before/after values and cover-art presence as they existed
+  when the operation ran, without storing audio files, artwork images, or
+  secrets.
 - History stays local, is browsable after restarting the application, and can
   be cleared without modifying audio files.
 - A rename revert appears as a linked session while preserving the original

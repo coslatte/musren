@@ -4,7 +4,17 @@ This is the React + TypeScript desktop shell for musren, built with Tauri and Vi
 
 ## Development
 
-Install Bun, then run:
+Install Python 3.10+, Bun, and stable Rust. Create the worker environment from
+the repository root:
+
+```sh
+python3 -m venv desktop/.venv
+desktop/.venv/bin/python -m pip install -e '.[desktop]'
+```
+
+On Arch Linux, install the Tauri system libraries and package build tools from
+`packaging/arch/PKGBUILD` (including `gtk3`, `webkit2gtk-4.1`,
+`libappindicator-gtk3`, and `patchelf`). Then, from `desktop/`, run:
 
 ```sh
 bun install
@@ -12,16 +22,16 @@ source .venv/bin/activate
 bun run tauri dev
 ```
 
-Create the Python environment from the repository root first with
-`python3 -m venv desktop/.venv` and
-`desktop/.venv/bin/pip install -e '.[desktop]'`. The environment must be
-active because Tauri builds the bundled Python worker before the frontend.
-On Windows, use the equivalent activation command for PowerShell.
+Keep the Python environment active because Tauri builds the bundled worker
+before the frontend. On Windows, activate `desktop/.venv` with the equivalent
+PowerShell command before building.
 
 Build the frontend and native application with:
 
 ```sh
-bun run tauri build
+bun run tauri build --bundles deb   # Linux bundle, including on Arch
+bun run tauri build --bundles nsis  # Windows only
+bun run tauri build --bundles dmg   # macOS only
 ```
 
 All frontend dependencies and scripts use Bun; keep `bun.lock` committed and
@@ -42,6 +52,13 @@ packaging spike. They are experimental and outside the supported release scope.
 `packaging/arch/PKGBUILD` builds and installs the Arch package locally. Keep
 `pkgver` aligned with the repository release tag. AUR publication remains a
 separate release decision.
+
+AcoustID recognition requires the external `fpcalc` executable and an API key.
+Linux credential storage requires a working Secret Service or KWallet session;
+Windows Credential Locker and macOS Keychain must be verified on their native
+systems. The first history release records cover-art presence but does not copy
+artwork images. Desktop packages are not release-ready until native install,
+credential-store, and signing/notarization checks pass on Windows and macOS.
 
 ## Recommended IDE Setup
 

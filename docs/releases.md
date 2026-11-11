@@ -50,6 +50,43 @@ AcoustID still needs the external `fpcalc` binary and an API key.
 The verifier checks version, CLI help, TUI preview, packaged child processing,
 rename, and rollback from outside the source checkout. The executable is unsigned.
 
+## Build the Tauri desktop packages
+
+The desktop release targets Arch Linux x86_64, Windows 10+, and macOS 11+.
+Build each package on its native operating system after creating the worker
+environment and installing the required system libraries, as described in
+[`desktop/README.md`](../desktop/README.md).
+
+From `desktop/`, install the locked Bun dependencies and build the matching
+native bundle:
+
+```sh
+bun install --frozen-lockfile
+bun run tauri build --bundles deb   # Linux bundle used by the Arch PKGBUILD
+bun run tauri build --bundles nsis  # Windows
+bun run tauri build --bundles dmg   # macOS
+```
+
+Build the Arch package from a clean checkout with `makepkg -si`; inspect its
+contents and verify install, launch, and removal on a disposable Arch system.
+On Windows and macOS, install the NSIS and DMG artifacts on clean native
+systems. For all targets, verify startup, file permissions, credential storage,
+the worker smoke path, and the expected failure message when the credential
+service or an optional dependency is unavailable. AcoustID requires external
+`fpcalc` and an API key.
+
+The current Tauri workflow does not configure installer signing or macOS
+notarization. Do not publish the desktop artifacts until the Windows installer
+is signed and the macOS app is signed and notarized. The Linux `.deb` bundle
+produced during the packaging spike is an intermediate input to the Arch
+package, not a supported Debian release.
+
+The first history release stores cover-art presence without copying artwork
+images. History remains local and excludes credentials and full audio files.
+
+The Phase 6 checklist and current validation status are tracked in
+[`tauri-plan.md`](tauri-plan.md).
+
 ## Publish the verified revision
 
 Merge the verified change into `main` and push it. Wait for every CI job to pass.
