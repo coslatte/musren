@@ -67,6 +67,24 @@ bun run tauri build --bundles nsis  # Windows
 bun run tauri build --bundles dmg   # macOS
 ```
 
+The Arch recipe is the VCS package `musren-desktop-git`. It builds from the
+upstream `main` branch and derives `pkgver` from Git tags. After publication,
+install it with `yay -S musren-desktop-git`. The package builds from source and
+does not use the unsigned CI bundle.
+
+Before changing the AUR recipe, build and inspect it from `packaging/arch/`:
+
+```sh
+makepkg --printsrcinfo > .SRCINFO
+makepkg --verifysource
+makepkg --syncdeps --cleanbuild
+namcap PKGBUILD
+```
+
+Copy `PKGBUILD` and `.SRCINFO` to the AUR repository, commit both files, and
+push to the AUR `master` branch. Update `.SRCINFO` whenever package metadata
+changes.
+
 The [Tauri desktop workflow](https://github.com/coslatte/musren/actions/workflows/tauri.yml)
 builds the Arch package with its declared dependencies, installs and removes
 it with `pacman`, and launches it under Xvfb. Native Windows and macOS jobs

@@ -60,6 +60,7 @@ network calls or mutations.
 | `tests/` | Workflow, import, and layout checks |
 | `docs/` | User and contributor guides |
 | `scripts/` | Installation, builds, and artifact checks |
+| `packaging/arch/` | Arch Linux VCS package recipe and generated metadata |
 | `pyproject.toml` | Metadata, dependencies, extras, entry points, and Ruff |
 | `uv.lock` | Resolved dependencies for optional uv workflows |
 | `MANIFEST.in` | Source archive contents |

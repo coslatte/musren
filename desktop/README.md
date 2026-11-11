@@ -4,14 +4,14 @@ This is the React + TypeScript desktop shell for musren, built with Tauri and Vi
 
 ## Install
 
-Use the signed packages attached to a GitHub release. The current CI artifacts
-are for validation and are not signed for public distribution.
+Use the signed packages attached to a GitHub release on Windows or macOS. The
+current CI artifacts are for validation and are not signed for public distribution.
 
-- **Arch Linux x86_64:** download the pacman package and run
-  `sudo pacman -U ./musren-desktop-*.pkg.tar.zst`.
 - **Windows 10+:** download and run the signed NSIS installer.
 - **macOS 11+:** download the DMG for Apple Silicon or Intel, open it, and drag
   musren to Applications. Open it normally after notarization.
+- **Arch Linux x86_64:** after the AUR package is published, run
+  `yay -S musren-desktop-git`.
 
 ## Development
 
@@ -25,7 +25,7 @@ desktop/.venv/bin/python -m pip install -e '.[desktop]'
 
 On Arch Linux, install the Tauri system libraries and package build tools from
 `packaging/arch/PKGBUILD` (including `gtk3`, `webkit2gtk-4.1`,
-`libappindicator-gtk3`, and `patchelf`). Then, from `desktop/`, run:
+`libappindicator`, and `patchelf`). Then, from `desktop/`, run:
 
 ```sh
 bun install
@@ -52,17 +52,17 @@ do not generate npm lockfiles.
 
 The first desktop release targets Arch Linux x86_64, Windows 10+, and macOS
 11+. The Arch `PKGBUILD` builds a temporary Linux bundle and packages its files
-for pacman; it does not make Debian a supported target. AUR publication remains
-a separate release decision.
+for pacman; it does not make Debian a supported target. The AUR recipe is
+`musren-desktop-git` and builds from the upstream `main` branch.
 
 The initial packaging spike also produced Debian, RPM, and AppImage artifacts.
 They are experimental and are not built or published for the supported release.
 
 ## Arch package
 
-`packaging/arch/PKGBUILD` builds and installs the Arch package locally. Keep
-`pkgver` aligned with the repository release tag. AUR publication remains a
-separate release decision.
+`packaging/arch/PKGBUILD` builds the `musren-desktop-git` VCS package from the
+upstream `main` branch. After publication, install it with `yay -S
+musren-desktop-git` or clone the AUR repository and run `makepkg -si`.
 
 AcoustID recognition requires the `recognition` extra, `fpcalc` on `PATH`, and
 an API key. Shazam recognition requires the `shazam` extra; lyrics require the
