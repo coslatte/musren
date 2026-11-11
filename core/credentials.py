@@ -3,7 +3,6 @@
 from typing import Optional, Protocol
 
 
-# 2026-11-09: solicitud: unificar las credenciales en el almacén seguro del sistema.
 class CredentialStoreError(OSError):
     """Report an unavailable, unsupported, or locked system credential store."""
 

@@ -364,8 +364,14 @@ Debian, Fedora, and AppImage are outside the supported scope.
 
 Still needed before a public release: exercise packaged optional operations and
 failure paths, configure Windows installer signing and macOS signing/notarization,
-and publish platform-specific installation instructions. No signing Actions
-secrets are configured. Artifacts from the workflow are validation outputs and
-are not yet signed release deliverables.
+and publish platform-specific installation instructions. Build and native
+startup validation are complete; the installation guide now gives the package
+steps and clearly marks current artifacts as unsigned validation outputs.
+Signing can be exercised entirely on GitHub-hosted native runners after the
+owner stores the Windows certificate/password and Apple signing/notarization
+credentials as protected Actions secrets. No signing Actions secrets are
+configured yet. Optional-feature checks require controlled cases with missing
+`recognition`, `lyrics`, and `shazam` extras, missing `fpcalc`, missing API key,
+and unavailable Linux Secret Service/KWallet.
 
 **Exit criteria:** verified release artifacts and user-facing installation docs.
