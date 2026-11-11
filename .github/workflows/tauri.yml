@@ -11,6 +11,40 @@ permissions:
   contents: read
 
 jobs:
+  arch-package:
+    name: Arch Linux x86_64 (pacman)
+    runs-on: ubuntu-latest
+    env:
+      MUSREN_SOURCE_REF: commit=${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build, install, and launch in Arch Linux
+        run: |
+          docker run --rm \
+            -e MUSREN_SOURCE_REF \
+            -v "$PWD:/workspace" \
+            archlinux:latest bash -euxc '
+              pacman -Syu --noconfirm --needed base-devel bun curl dbus file git gtk3 libappindicator librsvg openssl patchelf python python-pip rust webkit2gtk-4.1 wget xorg-server-xvfb
+              useradd --create-home builder
+              chown -R builder:builder /workspace
+              su builder -c "cd /workspace/packaging/arch && MUSREN_SOURCE_REF='$MUSREN_SOURCE_REF' makepkg --noconfirm"
+              package=$(find /workspace/packaging/arch -maxdepth 1 -type f -name "musren-desktop-*.pkg.tar.zst" ! -name "*-debug-*" -print -quit)
+              mkdir -p /workspace/artifacts
+              cp "$package" /workspace/artifacts/
+              pacman -U --noconfirm "$package"
+              set +e
+              timeout 15s xvfb-run -a dbus-run-session -- musren-desktop
+              result=$?
+              set -e
+              test "$result" -eq 124
+              pacman -R --noconfirm musren-desktop
+            '
+      - uses: actions/upload-artifact@v4
+        with:
+          name: musren-arch-x86_64-pacman
+          path: artifacts/*.pkg.tar.zst
+          if-no-files-found: error
+
   build:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}

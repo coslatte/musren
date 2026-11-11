@@ -8,7 +8,8 @@ url='https://github.com/coslatte/musren'
 license=('MIT')
 depends=('gtk3' 'webkit2gtk-4.1')
 makedepends=('base-devel' 'bun' 'curl' 'file' 'git' 'gtk3' 'libappindicator-gtk3' 'librsvg' 'openssl' 'patchelf' 'python' 'python-pip' 'rust' 'webkit2gtk-4.1' 'wget')
-source=('musren::git+https://github.com/coslatte/musren.git#branch=main')
+_musren_source_ref="${MUSREN_SOURCE_REF:-branch=main}"
+source=("musren::git+https://github.com/coslatte/musren.git#${_musren_source_ref}")
 sha256sums=('SKIP')
 
 pkgver() {
