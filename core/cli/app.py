@@ -11,9 +11,6 @@ from core.cli.commands import lyrics as lyrics_cmd
 from core.cli.commands import recognize as recognize_cmd
 from core.cli.commands import rename as rename_cmd
 
-load_dotenv()
-rich_traceback_install(show_locals=False)
-
 app = typer.Typer(
     name="musren",
     help=PARSER_DESCRIPTION,
@@ -47,7 +44,40 @@ def main(
 
 def cli() -> None:
     """Entry point for the CLI."""
-    app()
+    load_dotenv()
+    rich_traceback_install(show_locals=False)
+    import sys
+    from typer.main import get_command
+
+    arguments = sys.argv[1:]
+    aliases = {
+        "rn": "rename",
+        "lyr": "lyrics",
+        "cov": "covers",
+        "rec": "recognize",
+        "alb": "albums",
+        "cfg": "config",
+        "help": "--help",
+        "?": "--help",
+    }
+    if arguments:
+        arguments = [aliases.get(arguments[0], arguments[0]), *arguments[1:]]
+    if arguments and arguments[0] in (
+        "rename",
+        "lyrics",
+        "covers",
+        "recognize",
+        "albums",
+    ):
+        if (
+            len(arguments) > 1
+            and arguments[1] not in ("run", "revert")
+            and not arguments[1].startswith("-")
+        ):
+            arguments = [arguments[0], "--directory", arguments[1], *arguments[2:]]
+        if len(arguments) == 1 or arguments[1].startswith("-"):
+            arguments = [arguments[0], "run", *arguments[1:]]
+    get_command(app).main(args=arguments, prog_name="musren")
 
 
 if __name__ == "__main__":

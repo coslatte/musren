@@ -1,0 +1,4 @@
+include LICENSE README.md AGENTS.md pyproject.toml uv.lock
+recursive-include docs *.md
+recursive-include scripts *.py *.ps1 *.sh *.bat
+exclude .env

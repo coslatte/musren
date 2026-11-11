@@ -35,25 +35,25 @@ class TestRename(unittest.TestCase):
         )
 
     def test_safe_rename_sanitization_match(self):
-        # File on disk is sanitized: "ACDC - TNT.mp3" (slash removed)
-        filename = "ACDC - TNT.mp3"
-        filepath = os.path.join(self.test_dir, filename)
-        Path(filepath).touch()
-
-        # Tag says "AC/DC - TNT" -> unsanitized new name "AC/DC - TNT.mp3"
-        unsanitized_new_name = "AC/DC - TNT.mp3"
-
-        new_name, changed, error = self.processor._safe_rename(
-            filepath, unsanitized_new_name
-        )
-
-        # Should detect it's the same file after sanitization and do nothing
-        self.assertIsNone(error)
-        self.assertFalse(changed)
-        self.assertEqual(os.path.basename(new_name), filename)
-        self.assertFalse(
-            os.path.exists(os.path.join(self.test_dir, "ACDC - TNT (1).mp3"))
-        )
+        for platform, filename in (
+            ("Windows", "ACDC - TNT.mp3"),
+            ("Linux", "AC-DC - TNT.mp3"),
+            ("Darwin", "AC-DC - TNT.mp3"),
+        ):
+            with self.subTest(platform=platform):
+                directory = Path(self.test_dir) / platform
+                directory.mkdir()
+                filepath = directory / filename
+                filepath.write_bytes(b"unchanged audio")
+                self.processor.os_type = platform
+                new_name, changed, error = self.processor._safe_rename(
+                    str(filepath), "AC/DC - TNT.mp3"
+                )
+                self.assertIsNone(error)
+                self.assertFalse(changed)
+                self.assertEqual(Path(new_name), filepath)
+                self.assertEqual(filepath.read_bytes(), b"unchanged audio")
+                self.assertEqual(list(directory.iterdir()), [filepath])
 
     def test_safe_rename_recursive_directory(self):
         # Setup a subdirectory

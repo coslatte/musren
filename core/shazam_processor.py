@@ -1,29 +1,18 @@
 import asyncio
 from typing import Dict, Any
 
-try:
-    from shazamio import Shazam
-
-    _shazam_available = True
-except ImportError:
-    Shazam = None
-    _shazam_available = False
-
 
 class ShazamProcessor:
     def __init__(self):
-        if not _shazam_available or Shazam is None:
-            raise ImportError(
-                "La librería 'shazamio' no está instalada. Instálala con: pip install shazamio"
-            )
+        from shazamio import Shazam
+
+        self._shazam = Shazam
 
     async def _recognize_async(self, file_path: str) -> Dict[str, Any]:
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                if Shazam is None:
-                    return {"error": "Shazam library not available"}
-                shazam = Shazam()
+                shazam = self._shazam()
                 timeout = 20.0 + (attempt * 10.0)
                 out = await asyncio.wait_for(
                     shazam.recognize(file_path), timeout=timeout

@@ -5,25 +5,54 @@ from constants.info import MUSIC_RENAMER_VERSION
 
 
 def main(interactive: bool = True) -> None:
+    if sys.argv[1:2] == ["--_musren-worker"]:
+        from core.tui.runner import main as run_worker
+
+        del sys.argv[1]
+        run_worker()
+        return
     if "--version" in sys.argv or "-v" in sys.argv:
         print(f"musren {MUSIC_RENAMER_VERSION}")
         return
 
     warnings.filterwarnings("ignore", category=SyntaxWarning, module="pydub")
 
-    if interactive and len(sys.argv) == 1:
+    if "--tui" in sys.argv[1:]:
+        if sys.argv[1:] != ["--tui"]:
+            raise SystemExit(
+                "Use --tui alone; choose processing options inside the TUI."
+            )
+        tui()
+    elif interactive and len(sys.argv) == 1:
         from core.cli.shell import cli as musren_shell
 
         musren_shell()
     else:
-        from core.cli.shell import InteractiveShell
-
-        shell = InteractiveShell()
         if len(sys.argv) > 1:
-            cmd = " ".join(sys.argv[1:])
-            shell.run_command(cmd)
+            from core.cli.app import cli
+
+            cli()
         else:
+            from core.cli.shell import InteractiveShell
+
+            shell = InteractiveShell()
             shell.run()
+
+
+def tui() -> None:
+    """Launch the optional terminal interface without importing it for CLI use."""
+    # 2026-11-09: fija en Python 3.10 el mínimo común con el llavero seguro.
+    if sys.version_info < (3, 10):
+        raise SystemExit("musren requires Python 3.10 or newer.")
+    try:
+        from core.tui.app import MusrenApp
+    except ModuleNotFoundError as error:
+        if error.name != "textual":
+            raise
+        raise SystemExit(
+            'TUI dependency missing. Install: pip install ".[tui]"'
+        ) from error
+    MusrenApp().run()
 
 
 if __name__ == "__main__":

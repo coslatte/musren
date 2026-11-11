@@ -1,0 +1,146 @@
+name: Tauri desktop builds
+
+on:
+  pull_request:
+  push:
+    branches: [main, feat/tauri-desktop-phase5]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  arch-package:
+    name: Arch Linux x86_64 (pacman)
+    runs-on: ubuntu-latest
+    env:
+      MUSREN_SOURCE_REF: commit=${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build, install, and launch in Arch Linux
+        run: |
+          docker run --rm \
+            -e MUSREN_SOURCE_REF \
+            -v "$PWD:/workspace" \
+            archlinux:latest bash -euxc '
+              pacman -Syu --noconfirm --needed base-devel bun curl dbus file git gtk3 libappindicator librsvg openssl patchelf python python-pip rust webkit2gtk-4.1 wget xorg-server-xvfb
+              useradd --create-home builder
+              chown -R builder:builder /workspace
+              su builder -c "cd /workspace/packaging/arch && MUSREN_SOURCE_REF='$MUSREN_SOURCE_REF' makepkg --noconfirm"
+              package=$(find /workspace/packaging/arch -maxdepth 1 -type f -name "musren-desktop-*.pkg.tar.zst" ! -name "*-debug-*" -print -quit)
+              mkdir -p /workspace/artifacts
+              cp "$package" /workspace/artifacts/
+              pacman -U --noconfirm "$package"
+              set +e
+              timeout 15s xvfb-run -a dbus-run-session -- musren-desktop
+              result=$?
+              set -e
+              test "$result" -eq 124
+              pacman -R --noconfirm musren-desktop
+            '
+      - uses: actions/upload-artifact@v4
+        with:
+          name: musren-arch-x86_64-pacman
+          path: artifacts/*.pkg.tar.zst
+          if-no-files-found: error
+
+  desktop-preflight:
+    name: Desktop dependency and credential failure checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: python -m pip install -e '.[desktop]' pytest
+      - run: python -m pytest -q tests/test_imports.py
+
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x86_64 (NSIS)
+            runner: windows-latest
+            python: '3.10'
+            bundles: nsis
+          - name: macOS 11+ Apple Silicon (DMG)
+            runner: macos-15
+            python: '3.10'
+            bundles: dmg
+          - name: macOS 11+ Intel (DMG)
+            runner: macos-15-intel
+            python: '3.10'
+            bundles: dmg
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install NSIS when absent
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Get-Command makensis -ErrorAction SilentlyContinue)) {
+            choco install nsis --no-progress -y
+          }
+      - name: Install Python worker build dependency
+        run: python -m pip install -e ".[desktop]"
+      - name: Install locked frontend dependencies
+        working-directory: desktop
+        run: bun install --frozen-lockfile
+      - name: Build and smoke-check the worker
+        run: |
+          python scripts/build_tauri_sidecar.py
+          python scripts/smoke_tauri_worker.py
+      - name: Verify native credential store
+        if: runner.os == 'Windows' || runner.os == 'macOS'
+        run: python scripts/smoke_credentials.py
+      - name: Build desktop packages
+        working-directory: desktop
+        run: bun run tauri build --bundles ${{ matrix.bundles }}
+      - name: Install and launch the Windows installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem desktop/src-tauri/target/release/bundle/nsis/*.exe | Select-Object -First 1
+          $installDirectory = Join-Path $env:RUNNER_TEMP 'musren-install'
+          Start-Process -FilePath $installer.FullName -ArgumentList @('/S', "/D=$installDirectory") -Wait
+          $application = Join-Path $installDirectory 'musren-desktop.exe'
+          if (-not (Test-Path $application)) { throw "Installed application not found: $application" }
+          $process = Start-Process -FilePath $application -PassThru
+          Start-Sleep -Seconds 15
+          if ($process.HasExited) { throw "Installed application exited with code $($process.ExitCode)" }
+          Stop-Process -Id $process.Id -Force
+      - name: Install and launch the macOS DMG
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          dmg=$(find desktop/src-tauri/target/release/bundle/dmg -maxdepth 1 -name '*.dmg' -print -quit)
+          mount="$RUNNER_TEMP/musren-dmg"
+          app="$RUNNER_TEMP/musren.app"
+          mkdir -p "$mount"
+          hdiutil attach "$dmg" -nobrowse -mountpoint "$mount"
+          cp -R "$mount"/*.app "$app"
+          hdiutil detach "$mount"
+          executable=$(find "$app/Contents/MacOS" -maxdepth 1 -type f -perm -u+x -print -quit)
+          "$executable" >/dev/null 2>&1 &
+          app_pid=$!
+          sleep 15
+          kill -0 "$app_pid"
+          kill "$app_pid"
+          wait "$app_pid" || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: musren-${{ matrix.runner }}-${{ matrix.bundles }}
+          path: desktop/src-tauri/target/release/bundle/**/*
+          if-no-files-found: error
