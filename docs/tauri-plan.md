@@ -356,14 +356,15 @@ declared build dependencies were not registered on the host; dependency
 validation on a fully provisioned Arch system remains necessary. The local
 build used Python 3.14, so it does not verify the Python 3.10 CI baseline.
 
-The native Tauri jobs passed for Windows NSIS and macOS DMG on both Apple
-Silicon and Intel (workflow run 43040274045, commit 44f1242). Each platform
-passed the worker smoke check and a disposable credential write/read/delete
-check. The Windows installer and both DMGs were installed or mounted on clean
-runners and their apps stayed open for the smoke interval. General CI also
-passed across Windows/Linux with Python 3.10, 3.11, and 3.13 (run 43038822244).
-The release matrix now contains only the agreed Arch, Windows, and macOS
-targets; Debian, Fedora, and AppImage are outside the supported scope.
+The final native Tauri matrix passed for Windows NSIS and macOS DMG on both
+Apple Silicon and Intel (workflow run 43043273640, commit 58950a5). Each
+platform passed the worker smoke check and a disposable credential
+write/read/delete check. The Windows installer and both DMGs were installed or
+mounted on clean runners and their apps stayed open for the smoke interval.
+The Windows and macOS artifacts were uploaded. General CI also passed across
+Windows/Linux with Python 3.10, 3.11, and 3.13 (run 43038822244). The release
+matrix now contains only the agreed Arch, Windows, and macOS targets; Debian,
+Fedora, and AppImage are outside the supported scope.
 
 Remaining release blockers are a dependency-checked Arch build, packaged
 optional-operation and failure-path checks, Windows installer signing, and
