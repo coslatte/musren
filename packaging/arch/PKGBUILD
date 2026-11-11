@@ -1,0 +1,40 @@
+# 2026-11-09: solicitud: completar la receta de paquete arch de la fase 2.
+pkgname=musren-desktop
+pkgver=1.4.0.r2.gdfaa71b
+pkgrel=1
+pkgdesc='Desktop audio file organizer'
+arch=('x86_64')
+url='https://github.com/coslatte/musren'
+license=('MIT')
+depends=('gtk3' 'webkit2gtk-4.1')
+makedepends=('base-devel' 'bun' 'curl' 'file' 'git' 'gtk3' 'libappindicator-gtk3' 'librsvg' 'openssl' 'patchelf' 'python' 'python-pip' 'rust' 'webkit2gtk-4.1' 'wget')
+_musren_source_ref="${MUSREN_SOURCE_REF:-branch=main}"
+source=("musren::git+https://github.com/coslatte/musren.git#${_musren_source_ref}")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd "$srcdir/musren"
+  git describe --tags --long --abbrev=7 | sed 's/^v//;s/-/.r/;s/-/./'
+}
+
+build() {
+  cd "$srcdir/musren"
+  python -m venv desktop/.venv
+  desktop/.venv/bin/python -m pip install -e '.[desktop]'
+  cd desktop
+  bun install --frozen-lockfile
+  PATH="$PWD/.venv/bin:$PATH" bun run tauri build --bundles deb
+}
+
+package() {
+  cd "$srcdir/musren/desktop/src-tauri/target/release/bundle/deb"
+  local package_file="$PWD/$(printf '%s\n' musren_*_amd64.deb)"
+  local staging="$srcdir/package-data"
+  mkdir -p "$staging" "$pkgdir"
+  (
+    cd "$staging"
+    ar x "$package_file" data.tar.gz
+  )
+  tar -xzf "$staging/data.tar.gz" -C "$pkgdir"
+  install -Dm644 "$srcdir/musren/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

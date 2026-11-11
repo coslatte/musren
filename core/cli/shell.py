@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shlex
 import sys
 import time
 from dataclasses import dataclass
@@ -249,7 +250,14 @@ class InteractiveShell:
         if not input_line.strip():
             return False
 
-        parts = input_line.strip().split()
+        try:
+            parts = shlex.split(input_line)
+        except ValueError as error:
+            self._handle_error(error, "command")
+            return False
+        if not parts:
+            return False
+
         cmd_name = parts[0].lower()
         args = parts[1:]
 
@@ -410,8 +418,12 @@ class InteractiveShell:
         sys.argv = ["musren"] + args
         try:
             app()
-        except SystemExit:
-            pass
+        except SystemExit as error:
+            if error.code not in (None, 0):
+                self._handle_error(
+                    RuntimeError(f"Command exited with status {error.code}"),
+                    command_name,
+                )
         except Exception as error:
             self._handle_error(error, command_name)
         finally:

@@ -15,9 +15,9 @@ Use English for generated messages, documentation, and commit messages.
 - `scripts/`: installers, package validation, and portable Windows builds.
 - `pyproject.toml`: package metadata, extras, launchers, build backend, and Ruff settings.
 
-The CLI supports Python 3.8+. The TUI requires Python 3.9+. Portable Windows
-builds use Python 3.13 and PyInstaller. AcoustID also needs the external `fpcalc`
-binary. Optional Python features use extras in `pyproject.toml`.
+The CLI and TUI require Python 3.10+. Portable Windows builds use Python 3.13
+and PyInstaller. AcoustID also needs the external `fpcalc` binary. Optional
+Python features use extras in `pyproject.toml`.
 
 ## Working rules
 

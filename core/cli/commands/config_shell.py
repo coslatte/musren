@@ -9,11 +9,18 @@ from core.cli.config import VALID_KEYS, get_config_manager
 def config_list_shell() -> None:
     """List config - optimized for shell."""
     config = get_config_manager()
-    keys = config.list_keys()
+    if config.load_error:
+        print(f"[red]Configuration could not be read: {config.load_error}[/red]")
+        return
+    try:
+        keys = config.list_keys()
+    except OSError as error:
+        print(f"[red]Credentials could not be accessed: {error}[/red]")
+        return
 
     table = Table(title="API Keys", box=SIMPLE_HEAVY)
     table.add_column("Key", style="bold cyan")
-    table.add_column("Value", style="white")
+    table.add_column("Status", style="white")
     table.add_column("Description", style="dim")
 
     for key, description in VALID_KEYS.items():
@@ -31,11 +38,16 @@ def config_set_shell(key: str, value: str) -> None:
         return
 
     config = get_config_manager()
-    config.set(key, value)
+    try:
+        config.set(key, value)
+    except OSError as error:
+        print(f"[red]Credentials could not be saved: {error}[/red]")
+        return
 
+    # 2026-11-09: evita exponer el secreto recién guardado en la terminal.
     print(
         Panel(
-            f"[green]Set {key}[/green] = [cyan]{value}[/cyan]",
+            f"[green]Set {key} in the OS credential store[/green]",
             border_style="green",
             title="Config Updated",
         )
@@ -50,7 +62,14 @@ def config_get_shell(key: str) -> None:
         return
 
     config = get_config_manager()
-    value = config.get(key)
+    if config.load_error:
+        print(f"[red]Configuration could not be read: {config.load_error}[/red]")
+        return
+    try:
+        value = config.get(key)
+    except OSError as error:
+        print(f"[red]Credentials could not be accessed: {error}[/red]")
+        return
 
     if value:
         print(f"[cyan]{key}[/cyan] = [white]{value}[/white]")
@@ -66,7 +85,11 @@ def config_delete_shell(key: str) -> None:
         return
 
     config = get_config_manager()
-    deleted = config.delete(key)
+    try:
+        deleted = config.delete(key)
+    except OSError as error:
+        print(f"[red]Credentials could not be deleted: {error}[/red]")
+        return
 
     if deleted:
         print(

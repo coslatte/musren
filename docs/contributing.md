@@ -1,8 +1,7 @@
 # Contribute to musren
 
-Use an isolated Python environment and work from the repository root. The TUI
-requires Python 3.9+. Use Python 3.13 for portable Windows builds. CLI-only
-compatibility is checked on Python 3.8.
+Use Python 3.10 or newer in an isolated environment from the repository root.
+Use Python 3.13 for portable Windows builds.
 
 ## Set up an environment
 
@@ -23,7 +22,8 @@ python -m pip install -e ".[dev,tui]"
 ```
 
 Install feature extras when you need them: `lyrics`, `recognition`, `musicbrainz`,
-or `shazam`. The [release guide](releases.md) lists standalone build dependencies.
+or `shazam`. Install the `desktop` extra to build the Python worker sidecar. The
+[release guide](releases.md) lists other standalone build dependencies.
 
 ## Run and check a change
 

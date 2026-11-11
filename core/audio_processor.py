@@ -3,6 +3,7 @@ import re
 import platform
 import concurrent.futures
 import subprocess
+from typing import Any, Callable, Optional
 
 from utils.tools import (
     check_internet_connection,
@@ -871,94 +872,183 @@ class AudioProcessor:
         except Exception:
             return False
 
-    def rename_files(
+    def _read_rename_metadata(
         self,
-        progress_callback=None,
-        rename_format="1",
-        scan_callback=None,
-    ):
-        """
-        Renames audio files based on their metadata.
-        If the file doesn't have the necessary metadata (artist or title),
-        it is not renamed and a message is shown.
-
-        For files that belong to an album (more than 2 tracks with same album),
-        the track number is prepended: "NN - Artist - Title.ext"
-
-        Args:
-            progress_callback (callable): Function to call upon completing each file
-            rename_format (str): Format for renaming:
-                "1" = artist - title
-                "2" = title
-                "3" = track_number - artist - title (if album, otherwise artist - title)
-            scan_callback (callable): Optional callback for scan phase progress
-
-        Returns:
-            dict: Changes made (new_name: original_name)
-        """
-
-        files = get_audio_files(directory=self.directory, recursive=self.recursive)
-        changes = {}
-
+        files: list[str],
+        scan_callback: Optional[Callable[[str], None]] = None,
+    ) -> tuple[Optional[dict[str, Optional[dict[str, Any]]]], dict[str, int]]:
         try:
-            from mutagen import File  # type: ignore[attr-defined]
+            from mutagen import File
         except ImportError:
-            for file in files:
-                if progress_callback:
-                    progress_callback(
-                        file, {"status": False, "error": "Mutagen missing"}
-                    )
-            return changes
+            return None, {}
 
-        # First pass: collect album info and track numbers
-        album_counts = {}
-        file_metadata = {}
-
-        for file in files:
+        album_counts: dict[str, int] = {}
+        file_metadata: dict[str, Optional[dict[str, Any]]] = {}
+        for file_path in files:
             if scan_callback:
-                scan_callback(file)
-            file_path = file
+                scan_callback(file_path)
             try:
                 audio = File(file_path, easy=True)
                 if not audio or not audio.tags:
-                    file_metadata[file] = None
+                    file_metadata[file_path] = None
                     continue
 
                 artist = audio.get("artist", [""])[0]
                 title = audio.get("title", [""])[0]
                 album = audio.get("album", [""])[0]
                 tracknumber = audio.get("tracknumber", [""])[0]
-
                 if (
                     not artist
                     or not title
                     or artist == "Unknown Artist"
                     or title == "Unknown Title"
                 ):
-                    file_metadata[file] = None
+                    file_metadata[file_path] = None
                     continue
 
                 album_label = (
                     album.strip() if album and album.strip() else "__no_album__"
                 )
                 album_counts[album_label] = album_counts.get(album_label, 0) + 1
-                file_metadata[file] = {
+                file_metadata[file_path] = {
                     "artist": artist,
                     "title": title,
                     "album": album_label,
                     "tracknumber": tracknumber,
                 }
             except Exception:
-                file_metadata[file] = None
+                file_metadata[file_path] = None
+        return file_metadata, album_counts
 
-        # Second pass: rename
-        for file in files:
+    def _rename_target_name(
+        self,
+        file_path: str,
+        metadata: dict[str, Any],
+        album_counts: dict[str, int],
+        rename_format: str,
+    ) -> str:
+        artist = metadata["artist"]
+        title = metadata["title"]
+        album = metadata["album"]
+        tracknumber = metadata["tracknumber"]
+        is_album = album != "__no_album__" and album_counts.get(album, 0) > 2
+        extension = os.path.splitext(file_path)[1]
+
+        if rename_format == "2":
+            return f"{title}{extension}"
+        if rename_format == "3" and is_album and tracknumber:
             try:
-                meta = file_metadata.get(file)
-                if meta is None:
+                track_num = int(tracknumber.split("/")[0].split(".")[0])
+                return f"{track_num:02d} - {artist} - {title}{extension}"
+            except (ValueError, IndexError):
+                pass
+        return f"{artist} - {title}{extension}"
+
+    def _preview_safe_rename(
+        self,
+        old_path: str,
+        new_name: str,
+        reserved_paths: set[str],
+    ) -> tuple[str, str, Optional[str]]:
+        directory = os.path.dirname(old_path)
+        new_name = self._sanitize_filename(new_name)
+        new_path = os.path.join(directory, new_name)
+        normalized_old = os.path.normcase(old_path)
+        normalized_new = os.path.normcase(new_path)
+
+        if normalized_old == normalized_new:
+            return new_path, "unchanged", "No change needed."
+
+        base, extension = os.path.splitext(new_name)
+        counter = 1
+        while os.path.exists(new_path) or normalized_new in reserved_paths:
+            new_name = f"{base} ({counter}){extension}"
+            new_path = os.path.join(directory, new_name)
+            normalized_new = os.path.normcase(new_path)
+            counter += 1
+        return new_path, "rename", None
+
+    def preview_rename_files(
+        self,
+        rename_format: str = "1",
+        scan_callback: Optional[Callable[[str, int, int], None]] = None,
+    ) -> list[dict[str, Any]]:
+        """Return rename changes without modifying files."""
+        files = get_audio_files(directory=self.directory, recursive=self.recursive)
+        scanned = 0
+
+        def report_scan(path: str) -> None:
+            nonlocal scanned
+            scanned += 1
+            if scan_callback:
+                scan_callback(path, scanned, len(files))
+
+        file_metadata, album_counts = self._read_rename_metadata(files, report_scan)
+        if file_metadata is None:
+            raise RuntimeError("The mutagen library is not installed.")
+
+        reserved_paths: set[str] = set()
+        preview: list[dict[str, Any]] = []
+        for file_path in files:
+            metadata = file_metadata.get(file_path)
+            if metadata is None:
+                preview.append(
+                    {
+                        "path": file_path,
+                        "current_name": os.path.basename(file_path),
+                        "target_path": None,
+                        "target_name": None,
+                        "action": "skipped",
+                        "reason": "Missing or unreadable metadata.",
+                    }
+                )
+                continue
+
+            target_name = self._rename_target_name(
+                file_path, metadata, album_counts, rename_format
+            )
+            target_path, action, reason = self._preview_safe_rename(
+                file_path, target_name, reserved_paths
+            )
+            if action == "rename":
+                reserved_paths.add(os.path.normcase(target_path))
+            preview.append(
+                {
+                    "path": file_path,
+                    "current_name": os.path.basename(file_path),
+                    "target_path": target_path,
+                    "target_name": os.path.basename(target_path),
+                    "action": action,
+                    "reason": reason,
+                }
+            )
+        return preview
+
+    def rename_files(
+        self,
+        progress_callback: Optional[Callable[[str, dict[str, Any]], None]] = None,
+        rename_format: str = "1",
+        scan_callback: Optional[Callable[[str], None]] = None,
+    ) -> dict[str, str]:
+        """Rename audio files from their tags and return reversible changes."""
+        files = get_audio_files(directory=self.directory, recursive=self.recursive)
+        changes: dict[str, str] = {}
+        file_metadata, album_counts = self._read_rename_metadata(files, scan_callback)
+        if file_metadata is None:
+            for file_path in files:
+                if progress_callback:
+                    progress_callback(
+                        file_path, {"status": False, "error": "Mutagen missing"}
+                    )
+            return changes
+
+        for file_path in files:
+            try:
+                metadata = file_metadata.get(file_path)
+                if metadata is None:
                     if progress_callback:
                         progress_callback(
-                            file,
+                            file_path,
                             {
                                 "status": False,
                                 "skipped": True,
@@ -967,55 +1057,36 @@ class AudioProcessor:
                         )
                     continue
 
-                artist = meta["artist"]
-                title = meta["title"]
-                album = meta["album"]
-                tracknumber = meta["tracknumber"]
-                is_album = album != "__no_album__" and album_counts.get(album, 0) > 2
-                ext = os.path.splitext(file)[1]
-
-                if rename_format == "2":
-                    new_name = f"{title}{ext}"
-                elif rename_format == "3" and is_album and tracknumber:
-                    try:
-                        track_num = int(tracknumber.split("/")[0].split(".")[0])
-                        new_name = f"{track_num:02d} - {artist} - {title}{ext}"
-                    except (ValueError, IndexError):
-                        new_name = f"{artist} - {title}{ext}"
-                else:
-                    new_name = f"{artist} - {title}{ext}"
-
-                actual_new_path, changed, error = self._safe_rename(file, new_name)
+                new_name = self._rename_target_name(
+                    file_path, metadata, album_counts, rename_format
+                )
+                actual_new_path, changed, error = self._safe_rename(file_path, new_name)
                 if error:
                     if progress_callback:
-                        progress_callback(
-                            file,
-                            {"status": False, "error": error},
-                        )
+                        progress_callback(file_path, {"status": False, "error": error})
                 elif changed:
-                    changes[actual_new_path] = file
+                    changes[actual_new_path] = file_path
                     if progress_callback:
                         progress_callback(
-                            file,
+                            file_path,
                             {
                                 "status": True,
                                 "renamed": True,
                                 "new_name": os.path.basename(actual_new_path),
                             },
                         )
-                else:
-                    if progress_callback:
-                        progress_callback(
-                            file,
-                            {
-                                "status": True,
-                                "renamed": False,
-                                "reason": "No change needed",
-                            },
-                        )
-            except Exception as e:
+                elif progress_callback:
+                    progress_callback(
+                        file_path,
+                        {
+                            "status": True,
+                            "renamed": False,
+                            "reason": "No change needed",
+                        },
+                    )
+            except Exception as error:
                 if progress_callback:
-                    progress_callback(file, {"status": False, "error": str(e)})
+                    progress_callback(file_path, {"status": False, "error": str(error)})
 
         return changes
 
@@ -1075,16 +1146,6 @@ class AudioProcessor:
         if os.path.normcase(old_path) == os.path.normcase(new_path):
             return new_path, False, None
 
-        if os.path.exists(new_path) and os.path.normcase(new_path) != os.path.normcase(
-            old_path
-        ):
-            if self._are_files_identical(old_path, new_path):
-                try:
-                    os.remove(old_path)
-                    return new_path, True, None
-                except OSError as e:
-                    return old_path, False, str(e)
-
         base, extension = os.path.splitext(new_name)
         counter = 1
 
@@ -1104,26 +1165,6 @@ class AudioProcessor:
             return new_path, True, None
         except OSError as e:
             return old_path, False, str(e)
-
-    def _are_files_identical(self, path1, path2):
-        """
-        Compara dos archivos para ver si son idénticos (tamaño y contenido).
-        """
-        try:
-            if os.path.getsize(path1) != os.path.getsize(path2):
-                return False
-
-            # Comparar contenido en bloques
-            with open(path1, "rb") as f1, open(path2, "rb") as f2:
-                while True:
-                    b1 = f1.read(8192)
-                    b2 = f2.read(8192)
-                    if b1 != b2:
-                        return False
-                    if not b1:
-                        return True
-        except OSError:
-            return False
 
     def _sanitize_filename(self, filename):
         """
