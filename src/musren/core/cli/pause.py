@@ -59,6 +59,8 @@ class PauseManager:
                 import termios
                 import tty
 
+                if not sys.stdin.isatty():
+                    return
                 fd = sys.stdin.fileno()
                 old = termios.tcgetattr(fd)
                 try:
@@ -74,7 +76,7 @@ class PauseManager:
                                 self.toggle()
                 finally:
                     termios.tcsetattr(fd, termios.TCSADRAIN, old)
-            except (ImportError, AttributeError):
+            except (ImportError, AttributeError, OSError):
                 pass
 
 
