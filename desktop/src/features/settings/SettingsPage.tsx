@@ -5,6 +5,7 @@ import {
   getHistoryLocation,
   saveCredential,
 } from "../../api/jobs";
+import { readThemeMode, saveThemeMode, type ThemeMode } from "../../theme";
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : "The desktop command failed.";
@@ -18,6 +19,7 @@ export function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [historyLocation, setHistoryLocation] = useState("");
+  const [theme, setTheme] = useState<ThemeMode>(readThemeMode);
 
   useEffect(() => {
     void Promise.allSettled([getCredentialStatus(), getHistoryLocation()]).then(
@@ -71,6 +73,32 @@ export function SettingsPage() {
         </div>
       </header>
       <section className="workspace">
+        <section className="settings-card">
+          <p className="eyebrow">APPEARANCE</p>
+          <h2>Theme</h2>
+          <p>
+            Applies to this desktop app on this device. System follows the operating
+            system light or dark setting.
+          </p>
+          <div className="field-group">
+            <label htmlFor="theme-mode">Color theme</label>
+            <select
+              id="theme-mode"
+              value={theme}
+              onChange={(event) => {
+                const mode = event.currentTarget.value;
+                if (mode === "light" || mode === "dark" || mode === "system") {
+                  setTheme(mode);
+                  saveThemeMode(mode);
+                }
+              }}
+            >
+              <option value="system">System</option>
+              <option value="light">Light (Lotus)</option>
+              <option value="dark">Dark (Wave)</option>
+            </select>
+          </div>
+        </section>
         <section className="settings-card">
           <p className="eyebrow">CREDENTIALS</p>
           <h2>AcoustID API key</h2>
