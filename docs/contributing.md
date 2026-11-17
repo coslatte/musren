@@ -38,7 +38,9 @@ python -m ruff check .
 
 The tests use temporary tagged audio and controlled service responses. Headless
 TUI tests run when Textual is installed. Tests do not validate live API availability
-or account credentials. Check those separately using your own files.
+or account credentials. Check those separately using your own files. For the
+per-interface and per-operation checklist, including optional extras and
+`fpcalc`, see [testing.md](testing.md).
 
 For frontend changes, run `bun run format` from `desktop/` to format the UI and
 `bun run format:check` to verify its formatting. `bun run build` runs TypeScript
@@ -101,3 +103,5 @@ bash scripts/install.sh dev
 ```
 
 For release builds and the Windows executable, follow [releases.md](releases.md).
+For the desktop worker, frontend, Tauri build, and local artifact paths, follow
+[building.md](building.md).

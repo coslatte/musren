@@ -105,6 +105,8 @@ local configuration file stores them as plain text.
 | --- | --- |
 | [Terminal interface](docs/tui.md) | Forms, keyboard controls, previews, and cancellation |
 | [CLI reference](docs/cli.md) | Commands, flags, formats, and configuration |
+| [Testing](docs/testing.md) | Checks for the CLI, TUI, and desktop app, per operation |
+| [Building from source](docs/building.md) | CLI/TUI install, desktop worker, frontend, Tauri, and artifact paths |
 | [Contributing](docs/contributing.md) | Environment setup, repository map, and checks |
 | [Releases](docs/releases.md) | Package builds, Windows executable, and publishing |
 | [Changelog](docs/changelog.md) | Changes by version |
