@@ -1,54 +1,58 @@
 # musren
 
-Organize a local music library with musren's desktop app, terminal interface, or
-CLI. musren renames audio files from their metadata, fetches lyrics and artwork,
-recognizes tracks, and groups albums into folders.
+[![Release](https://img.shields.io/github/v/release/coslatte/musren)](https://github.com/coslatte/musren/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/coslatte/musren/ci.yml?branch=main&label=CI)](https://github.com/coslatte/musren/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](pyproject.toml)
+[![License](https://img.shields.io/github/license/coslatte/musren)](LICENSE)
 
-## Preview
+Organize a local music library from a desktop app, a terminal interface, or a
+CLI. musren renames audio files from their metadata, embeds synchronized lyrics
+and album artwork, recognizes unidentified tracks, and groups albums into
+folders. Everything runs on your machine; only lyrics, artwork, and recognition
+contact remote services.
 
-![preview](assets/demo-image-2026.jpg)
+![musren desktop app](assets/demo-image-2026.jpg)
 
-## Run on Windows
+## Features
 
-Download [musren-windows-x64.exe](https://github.com/coslatte/musren/releases/latest/download/musren-windows-x64.exe)
-and double-click it to open the TUI. Python and the optional Python dependencies
-are bundled. No installer is required.
+- **Rename** files from artist, title, and optional album track numbers.
+- **Embed lyrics** from synced lyrics providers.
+- **Embed covers** from MusicBrainz and the Cover Art Archive, skipping existing
+  artwork.
+- **Recognize** tracks with AcoustID or Shazam and write the identified metadata.
+- **Group albums** into folders with a `Singles` folder for loose tracks, and
+  revert the grouping later.
+- **Preview and confirm** every operation, with per-file progress and errors, and
+  keep or undo the renames after a run.
+- **Three interfaces** on one shared engine: Tauri desktop app, Textual TUI, and
+  a Typer CLI.
+- **Local history** and credentials stored in the OS credential store.
+- **Themes**: Kanagawa Lotus (light) and Wave (dark), or follow the system theme.
 
-The executable also accepts CLI commands:
+## Install
 
-```powershell
-.\musren-windows-x64.exe rename --directory "C:\Music"
-.\musren-windows-x64.exe --cli
-```
+Download the package for your platform from the
+[latest release](https://github.com/coslatte/musren/releases/latest). Release
+packages and checksums are listed on the
+[releases page](https://github.com/coslatte/musren/releases).
 
-Release packages and checksums are available on the
-[GitHub Releases page](https://github.com/coslatte/musren/releases).
+### Windows
 
-## Desktop app
+- **Desktop app**: run the signed NSIS installer (Windows 10 or newer).
+- **Portable TUI and CLI**: download
+  [`musren-windows-x64.exe`](https://github.com/coslatte/musren/releases/latest/download/musren-windows-x64.exe)
+  and double-click it. Python and the optional Python dependencies are bundled;
+  no installer is required.
 
-The Tauri desktop app provides the same six operations with a folder picker,
-preview, confirmation, progress, pause and cancel controls, per-file results, and
-local history. Rename keeps the keep-or-undo decision. Settings stores the
-AcoustID key in the OS credential store, and Appearance switches between the
-Kanagawa Lotus (light) and Wave (dark) themes, or follows the system theme.
+CI artifacts without a signature are for validation only. Use the signed files
+attached to a release.
 
-Build it from a source checkout:
+### macOS
 
-```shell
-python3 -m venv desktop/.venv
-desktop/.venv/bin/python -m pip install -e '.[desktop,lyrics,recognition,musicbrainz,shazam]'
-source desktop/.venv/bin/activate
-cd desktop
-bun install --frozen-lockfile
-bun run tauri build --bundles deb   # Windows: nsis, macOS: dmg
-```
+Download the DMG for Apple Silicon or Intel (macOS 11 or newer), open it, and
+drag musren into Applications.
 
-The PyInstaller worker bundles only the extras installed in that environment;
-`fpcalc` remains an external requirement for AcoustID. The worker, frontend,
-native executable, and installer paths are listed in
-[Building from source](docs/building.md).
-
-### Install on Arch Linux
+### Arch Linux
 
 The AUR package `musren-desktop-git` is prepared but not published yet. Until it
 is available, build the pacman package from the recipe in `packaging/arch`:
@@ -59,16 +63,15 @@ makepkg -si
 ```
 
 The recipe builds from the upstream `main` branch. Review the
-[`PKGBUILD`](packaging/arch/PKGBUILD) before installing it. Windows and macOS
-desktop packages are built on their native systems; see the
-[desktop guide](desktop/README.md).
+[`PKGBUILD`](packaging/arch/PKGBUILD) before installing it.
 
-## Install with Python
+### Python (CLI and TUI)
 
-The CLI and TUI require Python 3.10 or newer.
-From a source checkout, install the interface and launch it:
+The CLI and TUI require Python 3.10 or newer. From a source checkout:
 
 ```shell
+python3 -m venv .venv
+source .venv/bin/activate
 python -m pip install ".[tui]"
 musren-tui
 ```
@@ -80,14 +83,32 @@ python -m pip install ".[tui,lyrics,recognition,musicbrainz]"
 python -m pip install ".[tui,shazam]"
 ```
 
-For an isolated development environment, follow [the contributor guide](docs/contributing.md).
+The PyInstaller worker bundled with the desktop app only includes the extras
+installed in its build environment; `fpcalc` stays an external requirement.
 
-## Use your music library
+### Build from source
 
-In the TUI, choose a folder and an operation. Select **Preview** to inspect the
-files in scope, then **Run** to confirm the operation. The **Output** tab shows
-progress, results, and per-file errors. Rename offers a choice to keep or undo
+Desktop builds, the PyInstaller worker, installable Python packages, and artifact
+paths are covered in [Building from source](docs/building.md).
+
+## Use musren
+
+### Desktop app
+
+Pick a folder and an operation, select **Preview** to inspect the files in scope,
+then **Run**. Progress, per-file results, and errors appear in the output panel,
+and completed runs are kept in local history. Rename asks whether to keep or undo
 the changes.
+
+### Terminal interface
+
+Run `musren-tui`. Choose a folder and an operation, then preview and run it the
+same way. Browse with `fzf` when it is installed, pause or cancel a running job,
+and keep or undo renames. See the [terminal interface guide](docs/tui.md).
+
+### CLI
+
+Every interface shares the same operations:
 
 | Operation | Result |
 | --- | --- |
@@ -95,10 +116,8 @@ the changes.
 | Lyrics | Synchronized lyrics embedded in the audio file |
 | Covers | Album artwork embedded; existing artwork is skipped |
 | Recognize | Metadata from AcoustID or Shazam |
-| Albums | Tracks grouped into album folders and Singles |
+| Albums | Tracks grouped into album folders and `Singles` |
 | Revert albums | Audio files moved from subfolders back to the selected root |
-
-The CLI supports the same workflows:
 
 ```shell
 musren rename --directory "Music collection" --format 2
@@ -108,21 +127,22 @@ musren albums revert --directory "Music collection"
 musren --help
 ```
 
-Running `musren` without arguments opens the original interactive menu.
+Running `musren` without arguments opens the original interactive menu. The
+[CLI reference](docs/cli.md) lists every command and flag.
 
 ## Configure recognition
 
 AcoustID requires an API key and the external Chromaprint `fpcalc` binary. Set
-the key in the TUI's **Configuration** tab, the desktop **Settings** screen, or
-the CLI:
+the key in the desktop **Settings** screen, the TUI **Configuration** tab, or the
+CLI:
 
 ```shell
 musren config set acoustid YOUR_KEY
 ```
 
-Install `fpcalc` and make it available in PATH. Windows binaries are available
-from [Chromaprint releases](https://github.com/acoustid/chromaprint/releases).
-On macOS, use `brew install chromaprint`. On Debian or Ubuntu, use
+Install `fpcalc` and make it available in `PATH`. Windows binaries come from
+[Chromaprint releases](https://github.com/acoustid/chromaprint/releases); on
+macOS use `brew install chromaprint`; on Debian or Ubuntu use
 `sudo apt-get install libchromaprint-tools`.
 
 The CLI, TUI, and desktop app share the OS credential store: Secret Service or
@@ -138,13 +158,24 @@ desktop settings mask the value after entry. Legacy plaintext values in
 | [CLI reference](docs/cli.md) | Commands, flags, formats, and configuration |
 | [Testing](docs/testing.md) | Checks for the CLI, TUI, and desktop app, per operation |
 | [Building from source](docs/building.md) | CLI/TUI install, desktop worker, frontend, Tauri, and artifact paths |
+| [Desktop guide](desktop/README.md) | Desktop development, packaging, and release notes |
 | [Contributing](docs/contributing.md) | Environment setup, repository map, and checks |
 | [Releases](docs/releases.md) | Package builds, Windows executable, and publishing |
 | [Changelog](docs/changelog.md) | Changes by version |
 
-Project metadata, dependencies, build settings, and Ruff rules live in
-`pyproject.toml`. Detailed guides live in `docs/`; helper scripts live in
-`scripts/`. The repository's root keeps the application entry point and standard
-project files.
+## Development
+
+```shell
+python -m pip install -e ".[dev,tui]"
+python -m pytest -q
+python -m ruff format .
+python -m ruff check .
+```
+
+Use an isolated environment. The [contributor guide](docs/contributing.md) covers
+setup, and [Testing](docs/testing.md) explains how to exercise each interface and
+operation.
+
+## License
 
 Licensed under [MIT](LICENSE).
