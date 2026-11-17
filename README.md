@@ -24,16 +24,44 @@ The executable also accepts CLI commands:
 Release packages and checksums are available on the
 [GitHub Releases page](https://github.com/coslatte/musren/releases).
 
-## Install the desktop app on Arch Linux
+## Desktop app
 
-After the AUR package is published, install it with an AUR helper:
+The Tauri desktop app provides the same six operations with a folder picker,
+preview, confirmation, progress, pause and cancel controls, per-file results, and
+local history. Rename keeps the keep-or-undo decision. Settings stores the
+AcoustID key in the OS credential store, and Appearance switches between the
+Kanagawa Lotus (light) and Wave (dark) themes, or follows the system theme.
+
+Build it from a source checkout:
 
 ```shell
-yay -S musren-desktop-git
+python3 -m venv desktop/.venv
+desktop/.venv/bin/python -m pip install -e '.[desktop,lyrics,recognition,musicbrainz,shazam]'
+source desktop/.venv/bin/activate
+cd desktop
+bun install --frozen-lockfile
+bun run tauri build --bundles deb   # Windows: nsis, macOS: dmg
 ```
 
-The package builds the desktop app from the upstream `main` branch. Review the
-[`PKGBUILD`](packaging/arch/PKGBUILD) before installing it.
+The PyInstaller worker bundles only the extras installed in that environment;
+`fpcalc` remains an external requirement for AcoustID. The worker, frontend,
+native executable, and installer paths are listed in
+[Building from source](docs/building.md).
+
+### Install on Arch Linux
+
+The AUR package `musren-desktop-git` is prepared but not published yet. Until it
+is available, build the pacman package from the recipe in `packaging/arch`:
+
+```shell
+cd packaging/arch
+makepkg -si
+```
+
+The recipe builds from the upstream `main` branch. Review the
+[`PKGBUILD`](packaging/arch/PKGBUILD) before installing it. Windows and macOS
+desktop packages are built on their native systems; see the
+[desktop guide](desktop/README.md).
 
 ## Install with Python
 
@@ -85,7 +113,8 @@ Running `musren` without arguments opens the original interactive menu.
 ## Configure recognition
 
 AcoustID requires an API key and the external Chromaprint `fpcalc` binary. Set
-the key in the TUI's **Configuration** tab or use the CLI:
+the key in the TUI's **Configuration** tab, the desktop **Settings** screen, or
+the CLI:
 
 ```shell
 musren config set acoustid YOUR_KEY
@@ -96,8 +125,10 @@ from [Chromaprint releases](https://github.com/acoustid/chromaprint/releases).
 On macOS, use `brew install chromaprint`. On Debian or Ubuntu, use
 `sudo apt-get install libchromaprint-tools`.
 
-Both interfaces share `~/.musren/config.json`. The TUI masks credentials; the
-local configuration file stores them as plain text.
+The CLI, TUI, and desktop app share the OS credential store: Secret Service or
+KWallet on Linux, Windows Credential Locker, and macOS Keychain. The TUI and
+desktop settings mask the value after entry. Legacy plaintext values in
+`~/.musren/config.json` are removed only after a successful write and read-back.
 
 ## Documentation
 
