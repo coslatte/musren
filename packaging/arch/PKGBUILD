@@ -6,8 +6,8 @@ pkgdesc='Desktop audio file organizer (Git version)'
 arch=('x86_64')
 url='https://github.com/coslatte/musren'
 license=('MIT')
-depends=('gtk3' 'webkit2gtk-4.1')
-makedepends=('base-devel' 'bun' 'curl' 'file' 'git' 'libappindicator' 'librsvg' 'openssl' 'patchelf' 'python' 'python-pip' 'rust' 'wget')
+depends=('gtk3' 'libappindicator' 'webkit2gtk-4.1')
+makedepends=('base-devel' 'bun' 'curl' 'file' 'git' 'librsvg' 'openssl' 'patchelf' 'python' 'python-pip' 'rust' 'wget')
 _musren_source_ref="${MUSREN_SOURCE_REF:-branch=main}"
 source=("musren::git+https://github.com/coslatte/musren.git#${_musren_source_ref}")
 sha256sums=('SKIP')

@@ -10,7 +10,6 @@ pkgbase = musren-desktop-git
 	makedepends = curl
 	makedepends = file
 	makedepends = git
-	makedepends = libappindicator
 	makedepends = librsvg
 	makedepends = openssl
 	makedepends = patchelf
@@ -19,6 +18,7 @@ pkgbase = musren-desktop-git
 	makedepends = rust
 	makedepends = wget
 	depends = gtk3
+	depends = libappindicator
 	depends = webkit2gtk-4.1
 	source = musren::git+https://github.com/coslatte/musren.git#branch=main
 	sha256sums = SKIP

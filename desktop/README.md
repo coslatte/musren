@@ -14,8 +14,9 @@ current CI artifacts are for validation and are not signed for public distributi
   [latest release](https://github.com/coslatte/musren/releases/latest) and run
   `sudo apt install ./musren_*_amd64.deb` from its download directory. APT
   installs the required system libraries automatically.
-- **Arch Linux x86_64:** build the package from `packaging/arch` with
-  `makepkg -si`; the AUR package is not published yet.
+- **Arch Linux x86_64:** download the package from the
+  [latest release](https://github.com/coslatte/musren/releases/latest) and run
+  `sudo pacman -U ./musren-desktop-git-*.pkg.tar.zst`.
 
 ## Development
 
@@ -56,17 +57,17 @@ do not generate npm lockfiles.
 
 The desktop release targets Debian 12 / Ubuntu 22.04+ x86_64, Arch Linux
 x86_64, Windows 10+, and macOS 11+. Linux packages include the Python worker.
-The AUR recipe is `musren-desktop-git` and builds from the upstream `main`
-branch; it is not published yet.
+The Arch package is built from each tagged release and attached to the GitHub
+release. AUR publication is not required.
 
 RPM and AppImage artifacts from the initial packaging spike are experimental
 and are not built or published for the supported release.
 
 ## Arch package
 
-`packaging/arch/PKGBUILD` builds the `musren-desktop-git` VCS package from the
-upstream `main` branch. After publication, install it with `yay -S
-musren-desktop-git` or clone the AUR repository and run `makepkg -si`.
+`packaging/arch/PKGBUILD` builds the `musren-desktop-git` package from the
+tagged release source. Install the package downloaded from the latest GitHub
+release with `sudo pacman -U ./musren-desktop-git-*.pkg.tar.zst`.
 
 AcoustID recognition requires the `recognition` extra, `fpcalc` on `PATH`, and
 an API key. Shazam recognition requires the `shazam` extra; lyrics require the

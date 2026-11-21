@@ -65,16 +65,16 @@ for APT. Ubuntu 22.04 and Debian 12 are the supported build baselines.
 
 ### Arch Linux
 
-The AUR package `musren-desktop-git` is prepared but not published yet. Until it
-is available, build the pacman package from the recipe in `packaging/arch`:
+Download the `musren-desktop-git` package for x86_64 from the
+[latest release](https://github.com/coslatte/musren/releases/latest), then
+install it with:
 
 ```shell
-cd packaging/arch
-makepkg -si
+sudo pacman -U ./musren-desktop-git-*.pkg.tar.zst
 ```
 
-The recipe builds from the upstream `main` branch. Review the
-[`PKGBUILD`](packaging/arch/PKGBUILD) before installing it.
+The package is built from the tagged release source and includes its runtime
+dependencies. AUR publication is not required.
 
 ### Python (CLI and TUI)
 
