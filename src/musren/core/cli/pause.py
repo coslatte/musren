@@ -44,6 +44,14 @@ class PauseManager:
 
     def _keyboard_listener(self):
         try:
+            import sys
+
+            if not sys.stdin.isatty():
+                return
+        except (AttributeError, OSError, ValueError):
+            return
+
+        try:
             import msvcrt
 
             while not self._stop.is_set():

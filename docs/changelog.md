@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.1
+
+- Publish Tauri desktop installers for Windows, Debian/Ubuntu, Arch Linux, and macOS Intel and Apple Silicon.
+- Install and launch platform packages in CI before attaching them to GitHub releases.
+- Generate SHA-256 checksums for all published release assets.
+- Document unsigned Windows and ad-hoc signed, non-notarized macOS installation prompts.
+
 ## 1.4.0
 
 - Move detailed guides into `docs/` and installation helpers into `scripts/`.
