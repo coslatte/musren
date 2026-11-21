@@ -52,7 +52,8 @@ rename, and rollback from outside the source checkout. The executable is unsigne
 
 ## Build the Tauri desktop packages
 
-The desktop release targets Arch Linux x86_64, Windows 10+, and macOS 11+.
+The desktop release targets Debian 12 / Ubuntu 22.04+ x86_64, Arch Linux
+x86_64, Windows 10+, and macOS 11+.
 Build each package on its native operating system after creating the worker
 environment and installing the required system libraries, as described in
 [`desktop/README.md`](../desktop/README.md).
@@ -62,7 +63,7 @@ native bundle:
 
 ```sh
 bun install --frozen-lockfile
-bun run tauri build --bundles deb   # Linux bundle used by the Arch PKGBUILD
+bun run tauri build --bundles deb   # Debian/Ubuntu package and Arch build input
 bun run tauri build --bundles nsis  # Windows
 bun run tauri build --bundles dmg   # macOS
 ```
@@ -86,7 +87,9 @@ to the AUR `master` branch. Update `.SRCINFO` whenever package metadata changes.
 
 The [Tauri desktop workflow](https://github.com/coslatte/musren/actions/workflows/tauri.yml)
 builds the Arch package with its declared dependencies, installs and removes
-it with `pacman`, and launches it under Xvfb. Native Windows and macOS jobs
+it with `pacman`, and launches it under Xvfb. It also installs the Debian
+package on Ubuntu 22.04, launches it under Xvfb, and uploads it as a release
+asset. Native Windows and macOS jobs
 install or mount their bundles, launch the app, and run the worker and
 credential-store smoke checks. The successful [validation run for commit
 1f36423](https://github.com/coslatte/musren/actions/runs/43051126454) uploaded
@@ -114,8 +117,8 @@ environment, then add signing steps to the native Windows/macOS jobs. The jobs
 must sign, notarize and staple the Mac app, verify signatures, and only then
 upload release packages. No local Windows installation is needed. Do not
 publish unsigned desktop artifacts. The current workflow does not yet perform
-signing. The Linux `.deb` bundle is an intermediate input to the Arch package,
-not a supported Debian release.
+signing. The `.deb` package is the supported easy-install option for Debian
+and Ubuntu.
 
 The first history release stores cover-art presence without copying artwork
 images. History remains local and excludes credentials and full audio files.

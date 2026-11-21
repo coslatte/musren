@@ -10,8 +10,12 @@ current CI artifacts are for validation and are not signed for public distributi
 - **Windows 10+:** download and run the signed NSIS installer.
 - **macOS 11+:** download the DMG for Apple Silicon or Intel, open it, and drag
   musren to Applications. Open it normally after notarization.
-- **Arch Linux x86_64:** after the AUR package is published, run
-  `yay -S musren-desktop-git`.
+- **Debian 12 / Ubuntu 22.04+ x86_64:** download the `.deb` from the
+  [latest release](https://github.com/coslatte/musren/releases/latest) and run
+  `sudo apt install ./musren_*_amd64.deb` from its download directory. APT
+  installs the required system libraries automatically.
+- **Arch Linux x86_64:** build the package from `packaging/arch` with
+  `makepkg -si`; the AUR package is not published yet.
 
 ## Development
 
@@ -50,13 +54,13 @@ do not generate npm lockfiles.
 
 ## Supported platforms
 
-The first desktop release targets Arch Linux x86_64, Windows 10+, and macOS
-11+. The Arch `PKGBUILD` builds a temporary Linux bundle and packages its files
-for pacman; it does not make Debian a supported target. The AUR recipe is
-`musren-desktop-git` and builds from the upstream `main` branch.
+The desktop release targets Debian 12 / Ubuntu 22.04+ x86_64, Arch Linux
+x86_64, Windows 10+, and macOS 11+. Linux packages include the Python worker.
+The AUR recipe is `musren-desktop-git` and builds from the upstream `main`
+branch; it is not published yet.
 
-The initial packaging spike also produced Debian, RPM, and AppImage artifacts.
-They are experimental and are not built or published for the supported release.
+RPM and AppImage artifacts from the initial packaging spike are experimental
+and are not built or published for the supported release.
 
 ## Arch package
 

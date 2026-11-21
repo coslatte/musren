@@ -134,7 +134,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          deb=$(find desktop/src-tauri/target/release/bundle/deb -maxdepth 1 -name '*.deb' -print -quit)
+          deb=$(find "$GITHUB_WORKSPACE/desktop/src-tauri/target/release/bundle/deb" -maxdepth 1 -name '*.deb' -print -quit)
           test -n "$deb"
           sudo apt-get install -y "$deb"
           set +e
