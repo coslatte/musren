@@ -28,7 +28,7 @@ jobs:
               useradd --create-home builder
               chown -R builder:builder /workspace
               su builder -c "cd /workspace/packaging/arch && MUSREN_SOURCE_REF='$MUSREN_SOURCE_REF' makepkg --noconfirm"
-              package=$(find /workspace/packaging/arch -maxdepth 1 -type f -name "musren-desktop-*.pkg.tar.zst" ! -name "*-debug-*" -print -quit)
+              package=$(find /workspace/packaging/arch -maxdepth 1 -type f -name "musren-desktop-git-*.pkg.tar.zst" ! -name "*-debug-*" -print -quit)
               mkdir -p /workspace/artifacts
               cp "$package" /workspace/artifacts/
               pacman -U --noconfirm "$package"
@@ -37,7 +37,7 @@ jobs:
               result=$?
               set -e
               test "$result" -eq 124
-              pacman -R --noconfirm musren-desktop
+              pacman -R --noconfirm musren-desktop-git
             '
       - uses: actions/upload-artifact@v4
         with:
@@ -63,6 +63,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - name: Ubuntu 22.04 x86_64 (DEB)
+            runner: ubuntu-22.04
+            python: '3.10'
+            bundles: deb
           - name: Windows x86_64 (NSIS)
             runner: windows-latest
             python: '3.10'
@@ -85,6 +89,11 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - uses: dtolnay/rust-toolchain@stable
+      - name: Install Linux Tauri system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl file libayatana-appindicator3-dev libssl-dev libwebkit2gtk-4.1-dev librsvg2-dev libxdo-dev wget xvfb dbus-x11
       - name: Install NSIS when absent
         if: runner.os == 'Windows'
         shell: pwsh
@@ -106,6 +115,8 @@ jobs:
         run: python scripts/smoke_credentials.py
       - name: Build desktop packages
         working-directory: desktop
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ runner.os == 'macOS' && '-' || '' }}
         run: bun run tauri build --bundles ${{ matrix.bundles }}
       - name: Install and launch the Windows installer
         if: runner.os == 'Windows'
@@ -120,6 +131,20 @@ jobs:
           Start-Sleep -Seconds 15
           if ($process.HasExited) { throw "Installed application exited with code $($process.ExitCode)" }
           Stop-Process -Id $process.Id -Force
+      - name: Install and launch the Debian package
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          deb=$(find "$GITHUB_WORKSPACE/desktop/src-tauri/target/release/bundle/deb" -maxdepth 1 -name '*.deb' -print -quit)
+          test -n "$deb"
+          sudo apt-get install -y "$deb"
+          set +e
+          timeout 15s xvfb-run -a dbus-run-session -- musren-desktop
+          result=$?
+          set -e
+          test "$result" -eq 124
+          sudo apt-get remove -y musren
       - name: Install and launch the macOS DMG
         if: runner.os == 'macOS'
         shell: bash
@@ -133,6 +158,7 @@ jobs:
           cp -R "$mount"/*.app "$app"
           hdiutil detach "$mount"
           executable=$(find "$app/Contents/MacOS" -maxdepth 1 -type f -perm -u+x -print -quit)
+          codesign --verify --deep --strict "$app"
           "$executable" >/dev/null 2>&1 &
           app_pid=$!
           sleep 15

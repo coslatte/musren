@@ -38,7 +38,7 @@ def build() -> Path:
         "--name",
         name,
         "--paths",
-        str(root),
+        str(root / "src"),
         "--distpath",
         str(output),
         "--workpath",
@@ -46,7 +46,7 @@ def build() -> Path:
         "--specpath",
         str(root / "build" / "tauri"),
         "--collect-submodules",
-        "core",
+        "musren.core",
         "--collect-submodules",
         "mutagen",
         # 2026-11-09: incluye backends nativos para el almacén seguro compartido.
@@ -56,7 +56,7 @@ def build() -> Path:
         "keyring.backends",
         "--copy-metadata",
         "keyring",
-        str(root / "core" / "desktop_worker.py"),
+        str(root / "src" / "musren" / "core" / "desktop_worker.py"),
     ]
     subprocess.run(command, cwd=root, check=True)
     executable = output / name

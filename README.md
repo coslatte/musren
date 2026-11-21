@@ -1,35 +1,90 @@
 # musren
 
-Organize a local music library from a terminal. musren renames audio files from
-their metadata, fetches lyrics and artwork, recognizes tracks, and groups albums
-into folders. Use the terminal interface or the existing CLI.
+[![Release](https://img.shields.io/github/v/release/coslatte/musren)](https://github.com/coslatte/musren/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/coslatte/musren/ci.yml?branch=main&label=CI)](https://github.com/coslatte/musren/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](pyproject.toml)
+[![License](https://img.shields.io/github/license/coslatte/musren)](LICENSE)
 
-## Preview
+Organize a local music library from a desktop app, a terminal interface, or a
+CLI. musren renames audio files from their metadata, embeds synchronized lyrics
+and album artwork, recognizes unidentified tracks, and groups albums into
+folders. Everything runs on your machine; only lyrics, artwork, and recognition
+contact remote services.
 
-![preview](assets/demo-image-2026.jpg)
+![musren desktop app](assets/demo-image-2026.jpg)
 
-## Run on Windows
+## Features
 
-Download [musren-windows-x64.exe](https://github.com/coslatte/musren/releases/latest/download/musren-windows-x64.exe)
-and double-click it to open the TUI. Python and the optional Python dependencies
-are bundled. No installer is required.
+- **Rename** files from artist, title, and optional album track numbers.
+- **Embed lyrics** from synced lyrics providers.
+- **Embed covers** from MusicBrainz and the Cover Art Archive, skipping existing
+  artwork.
+- **Recognize** tracks with AcoustID or Shazam and write the identified metadata.
+- **Group albums** into folders with a `Singles` folder for loose tracks, and
+  revert the grouping later.
+- **Preview and confirm** every operation, with per-file progress and errors, and
+  keep or undo the renames after a run.
+- **Three interfaces** on one shared engine: Tauri desktop app, Textual TUI, and
+  a Typer CLI.
+- **Local history** and credentials stored in the OS credential store.
+- **Themes**: Kanagawa Lotus (light) and Wave (dark), or follow the system theme.
 
-The executable also accepts CLI commands:
+## Install
 
-```powershell
-.\musren-windows-x64.exe rename --directory "C:\Music"
-.\musren-windows-x64.exe --cli
-```
+Download the package for your platform from the
+[latest release](https://github.com/coslatte/musren/releases/latest). Release
+packages and checksums are listed on the
+[releases page](https://github.com/coslatte/musren/releases).
+After downloading all files into one directory, verify them with
+`sha256sum -c SHA256SUMS.txt` before installing.
 
-Release packages and checksums are available on the
-[GitHub Releases page](https://github.com/coslatte/musren/releases).
+### Windows
 
-## Install with Python
+- **Desktop app**: run the NSIS installer (Windows 10 or newer). The installer
+  is currently unsigned, so SmartScreen may show an unknown-publisher prompt.
+- **Portable TUI and CLI**: download
+  [`musren-windows-x64.exe`](https://github.com/coslatte/musren/releases/latest/download/musren-windows-x64.exe)
+  and double-click it. Python and the optional Python dependencies are bundled;
+  no installer is required.
 
-The CLI and TUI require Python 3.10 or newer.
-From a source checkout, install the interface and launch it:
+### macOS
+
+Download the DMG for Apple Silicon or Intel (macOS 11 or newer), open it, and
+drag musren into Applications. The app uses an ad-hoc signature but is not
+notarized; on first launch, control-click the app, choose **Open**, then approve
+it in the security prompt.
+
+### Debian and Ubuntu
+
+Download the `.deb` package from the [latest release](https://github.com/coslatte/musren/releases/latest), then install it with:
 
 ```shell
+sudo apt install ./*amd64.deb
+```
+
+The package installs the Tauri desktop app and declares its runtime dependencies
+for APT. Ubuntu 22.04 and Debian 12 are the supported build baselines.
+
+### Arch Linux
+
+Download the `musren-desktop-git` package for x86_64 from the
+[latest release](https://github.com/coslatte/musren/releases/latest), then
+install it with:
+
+```shell
+sudo pacman -U ./musren-desktop-git-*.pkg.tar.zst
+```
+
+The package is built from the tagged release source and includes its runtime
+dependencies. AUR publication is not required.
+
+### Python (CLI and TUI)
+
+The CLI and TUI require Python 3.10 or newer. From a source checkout:
+
+```shell
+python3 -m venv .venv
+source .venv/bin/activate
 python -m pip install ".[tui]"
 musren-tui
 ```
@@ -41,14 +96,32 @@ python -m pip install ".[tui,lyrics,recognition,musicbrainz]"
 python -m pip install ".[tui,shazam]"
 ```
 
-For an isolated development environment, follow [the contributor guide](docs/contributing.md).
+The PyInstaller worker bundled with the desktop app only includes the extras
+installed in its build environment; `fpcalc` stays an external requirement.
 
-## Use your music library
+### Build from source
 
-In the TUI, choose a folder and an operation. Select **Preview** to inspect the
-files in scope, then **Run** to confirm the operation. The **Output** tab shows
-progress, results, and per-file errors. Rename offers a choice to keep or undo
+Desktop builds, the PyInstaller worker, installable Python packages, and artifact
+paths are covered in [Building from source](docs/building.md).
+
+## Use musren
+
+### Desktop app
+
+Pick a folder and an operation, select **Preview** to inspect the files in scope,
+then **Run**. Progress, per-file results, and errors appear in the output panel,
+and completed runs are kept in local history. Rename asks whether to keep or undo
 the changes.
+
+### Terminal interface
+
+Run `musren-tui`. Choose a folder and an operation, then preview and run it the
+same way. Browse with `fzf` when it is installed, pause or cancel a running job,
+and keep or undo renames. See the [terminal interface guide](docs/tui.md).
+
+### CLI
+
+Every interface shares the same operations:
 
 | Operation | Result |
 | --- | --- |
@@ -56,10 +129,8 @@ the changes.
 | Lyrics | Synchronized lyrics embedded in the audio file |
 | Covers | Album artwork embedded; existing artwork is skipped |
 | Recognize | Metadata from AcoustID or Shazam |
-| Albums | Tracks grouped into album folders and Singles |
+| Albums | Tracks grouped into album folders and `Singles` |
 | Revert albums | Audio files moved from subfolders back to the selected root |
-
-The CLI supports the same workflows:
 
 ```shell
 musren rename --directory "Music collection" --format 2
@@ -69,24 +140,28 @@ musren albums revert --directory "Music collection"
 musren --help
 ```
 
-Running `musren` without arguments opens the original interactive menu.
+Running `musren` without arguments opens the original interactive menu. The
+[CLI reference](docs/cli.md) lists every command and flag.
 
 ## Configure recognition
 
 AcoustID requires an API key and the external Chromaprint `fpcalc` binary. Set
-the key in the TUI's **Configuration** tab or use the CLI:
+the key in the desktop **Settings** screen, the TUI **Configuration** tab, or the
+CLI:
 
 ```shell
 musren config set acoustid YOUR_KEY
 ```
 
-Install `fpcalc` and make it available in PATH. Windows binaries are available
-from [Chromaprint releases](https://github.com/acoustid/chromaprint/releases).
-On macOS, use `brew install chromaprint`. On Debian or Ubuntu, use
+Install `fpcalc` and make it available in `PATH`. Windows binaries come from
+[Chromaprint releases](https://github.com/acoustid/chromaprint/releases); on
+macOS use `brew install chromaprint`; on Debian or Ubuntu use
 `sudo apt-get install libchromaprint-tools`.
 
-Both interfaces share `~/.musren/config.json`. The TUI masks credentials; the
-local configuration file stores them as plain text.
+The CLI, TUI, and desktop app share the OS credential store: Secret Service or
+KWallet on Linux, Windows Credential Locker, and macOS Keychain. The TUI and
+desktop settings mask the value after entry. Legacy plaintext values in
+`~/.musren/config.json` are removed only after a successful write and read-back.
 
 ## Documentation
 
@@ -94,13 +169,26 @@ local configuration file stores them as plain text.
 | --- | --- |
 | [Terminal interface](docs/tui.md) | Forms, keyboard controls, previews, and cancellation |
 | [CLI reference](docs/cli.md) | Commands, flags, formats, and configuration |
+| [Testing](docs/testing.md) | Checks for the CLI, TUI, and desktop app, per operation |
+| [Building from source](docs/building.md) | CLI/TUI install, desktop worker, frontend, Tauri, and artifact paths |
+| [Desktop guide](desktop/README.md) | Desktop development, packaging, and release notes |
 | [Contributing](docs/contributing.md) | Environment setup, repository map, and checks |
 | [Releases](docs/releases.md) | Package builds, Windows executable, and publishing |
 | [Changelog](docs/changelog.md) | Changes by version |
 
-Project metadata, dependencies, build settings, and Ruff rules live in
-`pyproject.toml`. Detailed guides live in `docs/`; helper scripts live in
-`scripts/`. The repository's root keeps the application entry point and standard
-project files.
+## Development
+
+```shell
+python -m pip install -e ".[dev,tui]"
+python -m pytest -q
+python -m ruff format .
+python -m ruff check .
+```
+
+Use an isolated environment. The [contributor guide](docs/contributing.md) covers
+setup, and [Testing](docs/testing.md) explains how to exercise each interface and
+operation.
+
+## License
 
 Licensed under [MIT](LICENSE).

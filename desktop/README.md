@@ -4,14 +4,21 @@ This is the React + TypeScript desktop shell for musren, built with Tauri and Vi
 
 ## Install
 
-Use the signed packages attached to a GitHub release. The current CI artifacts
-are for validation and are not signed for public distribution.
+Installers for Windows and macOS are attached to each GitHub release. They have
+not been signed by a commercial developer identity yet.
 
-- **Arch Linux x86_64:** download the pacman package and run
-  `sudo pacman -U ./musren-desktop-*.pkg.tar.zst`.
-- **Windows 10+:** download and run the signed NSIS installer.
+- **Windows 10+:** download and run the NSIS installer. SmartScreen may show an
+  unknown-publisher prompt because the installer is unsigned.
 - **macOS 11+:** download the DMG for Apple Silicon or Intel, open it, and drag
-  musren to Applications. Open it normally after notarization.
+  musren to Applications. The app is ad-hoc signed but not notarized. On first
+  launch, control-click it, choose **Open**, and approve the security prompt.
+- **Debian 12 / Ubuntu 22.04+ x86_64:** download the `.deb` from the
+  [latest release](https://github.com/coslatte/musren/releases/latest) and run
+  `sudo apt install ./*amd64.deb` from its download directory. APT
+  installs the required system libraries automatically.
+- **Arch Linux x86_64:** download the package from the
+  [latest release](https://github.com/coslatte/musren/releases/latest) and run
+  `sudo pacman -U ./musren-desktop-git-*.pkg.tar.zst`.
 
 ## Development
 
@@ -25,7 +32,7 @@ desktop/.venv/bin/python -m pip install -e '.[desktop]'
 
 On Arch Linux, install the Tauri system libraries and package build tools from
 `packaging/arch/PKGBUILD` (including `gtk3`, `webkit2gtk-4.1`,
-`libappindicator-gtk3`, and `patchelf`). Then, from `desktop/`, run:
+`libappindicator`, and `patchelf`). Then, from `desktop/`, run:
 
 ```sh
 bun install
@@ -50,19 +57,19 @@ do not generate npm lockfiles.
 
 ## Supported platforms
 
-The first desktop release targets Arch Linux x86_64, Windows 10+, and macOS
-11+. The Arch `PKGBUILD` builds a temporary Linux bundle and packages its files
-for pacman; it does not make Debian a supported target. AUR publication remains
-a separate release decision.
+The desktop release targets Debian 12 / Ubuntu 22.04+ x86_64, Arch Linux
+x86_64, Windows 10+, and macOS 11+. Linux packages include the Python worker.
+The Arch package is built from each tagged release and attached to the GitHub
+release. AUR publication is not required.
 
-The initial packaging spike also produced Debian, RPM, and AppImage artifacts.
-They are experimental and are not built or published for the supported release.
+RPM and AppImage artifacts from the initial packaging spike are experimental
+and are not built or published for the supported release.
 
 ## Arch package
 
-`packaging/arch/PKGBUILD` builds and installs the Arch package locally. Keep
-`pkgver` aligned with the repository release tag. AUR publication remains a
-separate release decision.
+`packaging/arch/PKGBUILD` builds the `musren-desktop-git` package from the
+tagged release source. Install the package downloaded from the latest GitHub
+release with `sudo pacman -U ./musren-desktop-git-*.pkg.tar.zst`.
 
 AcoustID recognition requires the `recognition` extra, `fpcalc` on `PATH`, and
 an API key. Shazam recognition requires the `shazam` extra; lyrics require the
@@ -70,9 +77,7 @@ an API key. Shazam recognition requires the `shazam` extra; lyrics require the
 credential storage requires a working Secret Service or KWallet session;
 the Tauri CI checks Windows Credential Locker and macOS Keychain on their native
 systems using a disposable random credential. The first history release records
-cover-art presence but does not copy artwork images. Desktop packages are not
-release-ready until native install, credential-store, and signing/notarization
-checks pass on Windows and macOS.
+cover-art presence but does not copy artwork images.
 
 ## Recommended IDE Setup
 

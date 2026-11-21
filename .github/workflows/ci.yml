@@ -35,6 +35,7 @@ jobs:
           python -m ruff format --check .
           python -m ruff check .
       - name: Test all workflows and responsive layouts
+        timeout-minutes: 10
         run: python -m pytest -q
       - name: Check documentation links
         run: python scripts/check_docs.py
@@ -42,7 +43,7 @@ jobs:
         run: |
           musren --version
           musren --help
-          python -c "from core.tui.app import MusrenApp; print('TUI import passed')"
+          python -c "from musren.core.tui.app import MusrenApp; print('TUI import passed')"
 
   cli-compatibility:
     runs-on: ubuntu-latest

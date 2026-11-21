@@ -3,8 +3,8 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
-from utils.tools import get_audio_files
-from core.audio_processor import AudioProcessor
+from musren.utils.audio_files import get_audio_files
+from musren.core.audio_processor import AudioProcessor
 
 
 class TestRecursive(unittest.TestCase):

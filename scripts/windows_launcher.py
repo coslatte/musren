@@ -3,7 +3,7 @@
 import multiprocessing
 import sys
 
-import app
+from musren import entrypoint as app
 
 
 def main() -> None:

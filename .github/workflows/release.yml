@@ -51,6 +51,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: write
     steps:
       - uses: actions/checkout@v4
@@ -58,6 +59,40 @@ jobs:
         with:
           name: windows-portable
           path: dist/windows
+      - name: Download verified Tauri platform packages
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          run_id=""
+          for attempt in $(seq 1 90); do
+            runs=$(gh run list --repo "$GITHUB_REPOSITORY" \
+              --workflow tauri.yml \
+              --commit "$GITHUB_SHA" --limit 20 \
+              --json databaseId,event,headBranch,headSha)
+            run_id=$(jq -r --arg sha "$GITHUB_SHA" --arg tag "$GITHUB_REF_NAME" \
+              'map(select(.event == "push" and .headBranch == $tag and .headSha == $sha))[0].databaseId // empty' \
+              <<< "$runs")
+            if [[ -n "$run_id" ]]; then break; fi
+            sleep 10
+          done
+          test -n "$run_id"
+          gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --exit-status
+          gh run download "$run_id" --repo "$GITHUB_REPOSITORY" --dir dist/tauri-artifacts
+          mkdir -p dist/desktop
+          while IFS= read -r -d '' asset; do
+            relative_path=${asset#dist/tauri-artifacts/}
+            artifact_name=${relative_path%%/*}
+            cp "$asset" "dist/desktop/${artifact_name}-$(basename "$asset")"
+          done < <(find dist/tauri-artifacts -type f \
+            \( -name '*.deb' -o -name '*.pkg.tar.zst' -o -name '*.exe' -o -name '*.dmg' \) \
+            -print0)
+          rm -rf dist/tauri-artifacts
+          test -n "$(find dist/desktop -maxdepth 1 -name '*.deb' -print -quit)"
+          test -n "$(find dist/desktop -maxdepth 1 -name '*.pkg.tar.zst' -print -quit)"
+          test -n "$(find dist/desktop -maxdepth 1 -name '*.exe' -print -quit)"
+          test "$(find dist/desktop -maxdepth 1 -name '*.dmg' | wc -l)" -ge 2
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -67,8 +102,8 @@ jobs:
           python -m build
           python -m twine check dist/*.whl dist/*.tar.gz
       - name: Verify version and release contents
-        run: python scripts/verify_release.py --tag "${{ github.ref_name }}" --dist dist
+        run: python scripts/verify_release.py --tag "${{ github.ref_name }}" --dist dist --require-desktop-assets
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "${{ github.ref_name }}" dist/*.whl dist/*.tar.gz dist/SHA256SUMS.txt dist/windows/* --verify-tag --title "musren ${{ github.ref_name }}" --notes-file docs/changelog.md
+        run: gh release create "${{ github.ref_name }}" dist/*.whl dist/*.tar.gz dist/SHA256SUMS.txt dist/windows/* dist/desktop/* --verify-tag --title "musren ${{ github.ref_name }}" --notes-file docs/changelog.md

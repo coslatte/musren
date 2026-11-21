@@ -9,10 +9,10 @@ import threading
 
 import pytest
 
-from core.cli.config import ConfigManager
-from core.cli import config as config_module
-from core.tui.jobs import Job, OPERATIONS
-from core.tui.runner import Controls
+from musren.core.config import ConfigManager
+from musren.core import config as config_module
+from musren.core.tui.jobs import Job, OPERATIONS
+from musren.core.tui.command_adapter import Controls
 
 
 @pytest.mark.parametrize("operation", OPERATIONS)
@@ -85,13 +85,9 @@ def test_config_custom_path_roundtrip(tmp_path):
 @pytest.mark.parametrize("operation", ["rename", "covers", "albums", "revert"])
 def test_child_process_empty_directory(operation, tmp_path):
     process = subprocess.Popen(
-        [
-            sys.executable,
-            "-u",
-            "-m",
-            "core.tui.runner",
-            *Job(operation, tmp_path).arguments(),
-        ],
+        __import__(
+            "musren.core.tui.runner", fromlist=["worker_command"]
+        ).worker_command(Job(operation, tmp_path).arguments()),
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -138,7 +134,7 @@ def memory_credentials(monkeypatch):
 @pytest.mark.parametrize("size", [(120, 45), (80, 24)])
 def test_tui_mount_preview_config_help(tmp_path, size):
     from textual.widgets import Checkbox, DataTable, Input, Select, TabbedContent
-    from core.tui.app import MusrenApp
+    from musren.core.tui.app import MusrenApp
 
     async def scenario():
         config = ConfigManager(tmp_path / "settings" / "config.json")
@@ -188,7 +184,7 @@ def test_tui_mount_preview_config_help(tmp_path, size):
 @pytest.mark.skipif(not HAS_TEXTUAL, reason="Install the tui extra for UI tests")
 def test_tui_run_and_decline(tmp_path):
     from textual.widgets import Input, Static
-    from core.tui.app import Confirmation, MusrenApp
+    from musren.core.tui.app import Confirmation, MusrenApp
 
     async def scenario():
         app = MusrenApp(ConfigManager(tmp_path / "config.json"))
@@ -218,7 +214,7 @@ def test_tui_run_and_decline(tmp_path):
 @pytest.mark.skipif(not HAS_TEXTUAL, reason="Install the tui extra for UI tests")
 def test_tui_invalid_directory(tmp_path):
     from textual.widgets import Input, Static
-    from core.tui.app import MusrenApp
+    from musren.core.tui.app import MusrenApp
 
     async def scenario():
         app = MusrenApp(ConfigManager(tmp_path / "config.json"))
@@ -237,7 +233,7 @@ def test_tui_invalid_directory(tmp_path):
 @pytest.mark.skipif(not HAS_TEXTUAL, reason="Install the tui extra for UI tests")
 def test_tui_typed_directory_drives_tree_and_preview(tmp_path):
     from textual.widgets import DataTable, DirectoryTree, Input, Static
-    from core.tui.app import MusrenApp
+    from musren.core.tui.app import MusrenApp
 
     music = tmp_path / "elsewhere"
     music.mkdir()
@@ -299,7 +295,7 @@ def cancel_fzf_script():
 
 @pytest.mark.skipif(not HAS_TEXTUAL, reason="Install the tui extra for UI tests")
 def test_list_directories_bounds_depth_and_count(tmp_path):
-    from core.tui.app import list_directories
+    from musren.core.tui.app import list_directories
 
     (tmp_path / "a" / "b" / "c").mkdir(parents=True)
     (tmp_path / "a" / "b" / "deep").mkdir()
@@ -322,7 +318,7 @@ def test_list_directories_bounds_depth_and_count(tmp_path):
 
 @pytest.mark.skipif(not HAS_TEXTUAL, reason="Install the tui extra for UI tests")
 def test_pick_directory_uses_fzf(monkeypatch, tmp_path):
-    from core.tui.app import FZF_MISSING, pick_directory
+    from musren.core.tui.app import FZF_MISSING, pick_directory
 
     library = tmp_path / "Library"
     (library / "Rock").mkdir(parents=True)
@@ -337,7 +333,7 @@ def test_pick_directory_uses_fzf(monkeypatch, tmp_path):
 
 @pytest.mark.skipif(not HAS_TEXTUAL, reason="Install the tui extra for UI tests")
 def test_pick_directory_reports_cancelled(monkeypatch, tmp_path):
-    from core.tui.app import pick_directory
+    from musren.core.tui.app import pick_directory
 
     library = tmp_path / "Library"
     (library / "Rock").mkdir(parents=True)
@@ -347,7 +343,7 @@ def test_pick_directory_reports_cancelled(monkeypatch, tmp_path):
 
 @pytest.mark.skipif(not HAS_TEXTUAL, reason="Install the tui extra for UI tests")
 def test_tui_browse_sets_directory_and_previews(monkeypatch, tmp_path):
-    from core.tui.app import MusrenApp
+    from musren.core.tui.app import MusrenApp
     from textual.widgets import DataTable, DirectoryTree, Input, Static
 
     library = tmp_path / "Library"
@@ -375,7 +371,7 @@ def test_tui_browse_sets_directory_and_previews(monkeypatch, tmp_path):
 
 @pytest.mark.skipif(not HAS_TEXTUAL, reason="Install the tui extra for UI tests")
 def test_tui_browse_reports_missing_binary(tmp_path):
-    from core.tui.app import MusrenApp
+    from musren.core.tui.app import MusrenApp
     from textual.widgets import Static
 
     async def scenario():
@@ -392,7 +388,7 @@ def test_tui_browse_reports_missing_binary(tmp_path):
 
 @pytest.mark.skipif(not HAS_TEXTUAL, reason="Install the tui extra for UI tests")
 def test_tui_browse_button_keeps_directory_on_cancel(monkeypatch, tmp_path):
-    from core.tui.app import MusrenApp
+    from musren.core.tui.app import MusrenApp
     from textual.widgets import Input, Static
 
     library = tmp_path / "Library"
@@ -435,7 +431,7 @@ def test_runner_protocol(monkeypatch):
 
 @pytest.mark.skipif(not HAS_TEXTUAL, reason="Install the tui extra for UI tests")
 def test_tui_quit_at_initial_confirmation(tmp_path):
-    from core.tui.app import MusrenApp
+    from musren.core.tui.app import MusrenApp
     from textual.widgets import Input
 
     async def scenario():
@@ -460,7 +456,7 @@ def test_tui_launch_missing_dependency(monkeypatch):
     original = builtins.__import__
 
     def without_textual(name, *args, **kwargs):
-        if name == "core.tui.app":
+        if name == "musren.core.tui.app":
             raise ModuleNotFoundError("No module named 'textual'", name="textual")
         return original(name, *args, **kwargs)
 
@@ -480,11 +476,11 @@ class BlockOptional(importlib.abc.MetaPathFinder):
             raise ModuleNotFoundError(fullname, name=fullname)
 sys.meta_path.insert(0, BlockOptional())
 import app
-import core.tui
-import core.tui.jobs
-import core.tui.runner
-import core.audio_processor
-import core.shazam_processor
+import musren.core.tui
+import musren.core.tui.jobs
+import musren.core.tui.runner
+import musren.core.audio_processor
+import musren.core.shazam_processor
 """
     result = subprocess.run(
         [sys.executable, "-c", code], capture_output=True, text=True, timeout=10
@@ -494,8 +490,8 @@ import core.shazam_processor
 
 
 def test_entrypoints_keep_cli_and_add_tui(monkeypatch):
-    import app as entry
-    import core.cli.shell as shell
+    from musren import entrypoint as entry
+    import musren.core.cli.shell as shell
 
     seen = []
     monkeypatch.setattr(shell, "cli", lambda: seen.append("cli"))
@@ -512,7 +508,7 @@ def test_entrypoints_keep_cli_and_add_tui(monkeypatch):
 
 @pytest.mark.skipif(not HAS_TEXTUAL, reason="Install the tui extra for UI tests")
 def test_tui_config_confirmation_and_settings(tmp_path):
-    from core.tui.app import MusrenApp
+    from musren.core.tui.app import MusrenApp
     from textual.widgets import Checkbox, TabbedContent
 
     async def scenario():
@@ -540,7 +536,7 @@ def test_tui_config_confirmation_and_settings(tmp_path):
 
 @pytest.mark.skipif(not HAS_TEXTUAL, reason="Install the tui extra for UI tests")
 def test_tui_child_launch_failure_recovers(tmp_path, monkeypatch):
-    from core.tui.app import MusrenApp
+    from musren.core.tui.app import MusrenApp
     from textual.widgets import Input, Button, Static
 
     async def fail_launch(*args, **kwargs):
@@ -567,7 +563,7 @@ def test_tui_child_launch_failure_recovers(tmp_path, monkeypatch):
 @pytest.mark.skipif(not HAS_TEXTUAL, reason="Install the tui extra for UI tests")
 @pytest.mark.parametrize("size", [(40, 20), (60, 20), (80, 24), (100, 30), (160, 50)])
 def test_responsive_layout_keeps_controls_visible(tmp_path, size):
-    from core.tui.app import Confirmation, MusrenApp
+    from musren.core.tui.app import Confirmation, MusrenApp
     from textual.widgets import Button, Input, TabbedContent
 
     async def scenario():
