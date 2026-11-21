@@ -375,6 +375,7 @@ def test_child_cancel_at_rename_confirmation(tagged_mp3, tmp_path):
     import queue
     import subprocess
     import threading
+    import time
     from musren.core.tui.runner import EVENT_PREFIX
     from musren.core.tui.runner import worker_command
 
@@ -389,19 +390,38 @@ def test_child_cancel_at_rename_confirmation(tagged_mp3, tmp_path):
     )
     lines = queue.Queue()
     reader = threading.Thread(
-        target=lambda: [lines.put(line) for line in process.stdout], daemon=True
+        target=lambda: [lines.put(line) for line in process.stdout],
+        daemon=True,
     )
     reader.start()
     try:
-        for _ in range(100):
-            line = lines.get(timeout=10)
+        output_lines = []
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            try:
+                line = lines.get(timeout=min(0.5, deadline - time.monotonic()))
+            except queue.Empty:
+                if process.poll() is not None:
+                    break
+                continue
+            output_lines.append(line)
             if (
                 line.startswith(EVENT_PREFIX)
                 and json.loads(line[len(EVENT_PREFIX) :])["kind"] == "confirm"
             ):
                 break
         else:
-            pytest.fail("No keep/undo confirmation received")
+            pytest.fail(
+                "No keep/undo confirmation received within 30 seconds. "
+                f"Worker output: {''.join(output_lines)}"
+            )
+        assert any(
+            line.startswith(EVENT_PREFIX)
+            and json.loads(line[len(EVENT_PREFIX) :])["kind"] == "confirm"
+            for line in output_lines
+        ), (
+            f"Worker exited before confirmation (code {process.poll()}): {''.join(output_lines)}"
+        )
         process.stdin.write(json.dumps({"action": "cancel"}) + "\n")
         process.stdin.flush()
         process.wait(timeout=10)

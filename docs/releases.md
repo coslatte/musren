@@ -88,17 +88,17 @@ the current release scope.
 The [Tauri desktop workflow](https://github.com/coslatte/musren/actions/workflows/tauri.yml)
 builds the Arch package with its declared dependencies, installs and removes
 it with `pacman`, and launches it under Xvfb. It also installs the Debian
-package on Ubuntu 22.04, launches it under Xvfb, and uploads it as a release
-asset. Native Windows and macOS jobs
-install or mount their bundles, launch the app, and run the worker and
-credential-store smoke checks. The successful [validation run for commit
+package on Ubuntu 22.04 and launches it under Xvfb. Native Windows and macOS
+jobs install or mount their bundles, launch the app, and run the worker and
+credential-store smoke checks. On a version tag, the Release workflow waits for
+that exact Tauri run and attaches its Windows NSIS, Debian, Arch, and two macOS
+packages to the GitHub release. The successful [validation run for commit
 1f36423](https://github.com/coslatte/musren/actions/runs/43051126454) uploaded
 Arch, Windows, macOS Intel, and macOS Apple Silicon artifacts. Workflow
 artifacts are for validation; they are not signed release packages.
 
 Before publishing, run the Tauri workflow on the final release commit and
-confirm all four jobs and artifacts. Also verify the signed Windows installer
-and signed/notarized macOS app on clean native systems. The workflow can do
+confirm all platform builds and artifacts. The workflow can do
 these checks on GitHub-hosted Windows and macOS runners; a local Windows
 installation is not required. AcoustID requires the `recognition` extra, the
 external `fpcalc` executable, and an API key. Shazam requires the `shazam`
@@ -109,16 +109,16 @@ The Tauri workflow runs a disposable credential write/read/delete check against
 Windows Credential Locker and macOS Keychain. It never uses or prints the
 user's AcoustID key.
 
-Signing needs owner-provided credentials in protected GitHub Actions
-environment secrets, never in the repository: a Windows code-signing
-certificate and password; an Apple Developer signing identity, App Store
-Connect API key, and notarization credentials. Configure a protected release
-environment, then add signing steps to the native Windows/macOS jobs. The jobs
-must sign, notarize and staple the Mac app, verify signatures, and only then
-upload release packages. No local Windows installation is needed. Do not
-publish unsigned desktop artifacts. The current workflow does not yet perform
-signing. The `.deb` package is the supported easy-install option for Debian
-and Ubuntu.
+The Windows installer is currently unsigned and Windows can show a
+SmartScreen unknown-publisher warning. macOS builds use an ad-hoc signature so
+they can run after the user approves the app in Privacy & Security; they are
+not notarized. This allows desktop packages to be distributed without
+commercial signing credentials, with OS warnings documented in
+[`desktop/README.md`](../desktop/README.md). To remove those warnings, add a
+Windows code-signing certificate and Apple Developer signing and notarization
+credentials as protected GitHub Actions secrets, then verify signatures before
+publishing. Never put signing credentials in the repository. The `.deb` package
+is the supported easy-install option for Debian and Ubuntu.
 
 The first history release stores cover-art presence without copying artwork
 images. History remains local and excludes credentials and full audio files.
@@ -140,14 +140,18 @@ git push origin "v$releaseVersion"
 
 Use a new version tag. Existing published releases remain tied to their original
 revision. The Release workflow validates Windows and Linux, builds and tests the
-Windows executable, then publishes the assets on GitHub.
+portable Windows executable, waits for the Tauri workflow on the same tag,
+verifies its platform assets, and publishes the Python packages, portable
+executable, Windows installer, Linux packages, macOS DMGs, and SHA-256 checksums
+on GitHub.
 
 Only the publish job receives permission to create a release. Failed validation
 prevents publication. PyPI publication is not configured.
 
 ## Check published downloads
 
-Download the published assets and compare them with their SHA-256 files. On
-Windows, `Get-FileHash PATH -Algorithm SHA256` prints an asset's checksum.
+Download all assets and `SHA256SUMS.txt` into one directory, then run
+`sha256sum -c SHA256SUMS.txt`. On Windows, compare each asset with the matching
+entry using `Get-FileHash PATH -Algorithm SHA256`.
 Run `scripts/verify_windows.py` against the downloaded executable before declaring
 the release complete.

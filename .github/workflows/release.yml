@@ -46,90 +46,12 @@ jobs:
           name: windows-portable
           path: dist/windows/*
 
-  tauri-linux:
-    needs: validate
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Install Linux Tauri system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential curl file libayatana-appindicator3-dev libssl-dev libwebkit2gtk-4.1-dev librsvg2-dev libxdo-dev wget xvfb dbus-x11
-      - name: Install Python worker dependencies
-        run: python -m pip install -e '.[desktop]'
-      - name: Install frontend dependencies
-        working-directory: desktop
-        run: bun install --frozen-lockfile
-      - name: Build Debian package
-        working-directory: desktop
-        run: bun run tauri build --bundles deb
-      - name: Install and launch Debian package
-        shell: bash
-        run: |
-          set -euo pipefail
-          deb=$(find "$GITHUB_WORKSPACE/desktop/src-tauri/target/release/bundle/deb" -maxdepth 1 -name '*.deb' -print -quit)
-          test -n "$deb"
-          sudo apt-get install -y "$deb"
-          set +e
-          timeout 15s xvfb-run -a dbus-run-session -- musren-desktop
-          result=$?
-          set -e
-          test "$result" -eq 124
-          mkdir -p dist/tauri-linux
-          cp "$deb" dist/tauri-linux/
-          sudo apt-get remove -y musren
-      - uses: actions/upload-artifact@v4
-        with:
-          name: tauri-linux-deb
-          path: dist/tauri-linux/*.deb
-
-  tauri-arch:
-    needs: validate
-    runs-on: ubuntu-latest
-    env:
-      MUSREN_SOURCE_REF: commit=${{ github.sha }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build, install, and launch in Arch Linux
-        run: |
-          docker run --rm \
-            -e MUSREN_SOURCE_REF \
-            -v "$GITHUB_WORKSPACE:/workspace" \
-            archlinux:latest bash -euxc '
-              pacman -Syu --noconfirm --needed base-devel bun curl dbus file git gtk3 libappindicator librsvg openssl patchelf python python-pip rust webkit2gtk-4.1 wget xorg-server-xvfb
-              useradd --create-home builder
-              chown -R builder:builder /workspace
-              su --preserve-environment builder -c "cd /workspace/packaging/arch && makepkg --noconfirm"
-              package=$(find /workspace/packaging/arch -maxdepth 1 -type f -name "musren-desktop-git-*.pkg.tar.zst" ! -name "*-debug-*" -print -quit)
-              test -n "$package"
-              mkdir -p /workspace/dist/tauri-arch
-              cp "$package" /workspace/dist/tauri-arch/
-              pacman -U --noconfirm "$package"
-              set +e
-              timeout 15s xvfb-run -a dbus-run-session -- musren-desktop
-              result=$?
-              set -e
-              test "$result" -eq 124
-              pacman -R --noconfirm musren-desktop-git
-            '
-      - uses: actions/upload-artifact@v4
-        with:
-          name: tauri-arch-pacman
-          path: dist/tauri-arch/*.pkg.tar.zst
-          if-no-files-found: error
-
   publish:
-    needs: [validate, windows, tauri-linux, tauri-arch]
+    needs: [validate, windows]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: write
     steps:
       - uses: actions/checkout@v4
@@ -137,14 +59,40 @@ jobs:
         with:
           name: windows-portable
           path: dist/windows
-      - uses: actions/download-artifact@v4
-        with:
-          name: tauri-linux-deb
-          path: dist/tauri-linux
-      - uses: actions/download-artifact@v4
-        with:
-          name: tauri-arch-pacman
-          path: dist/tauri-arch
+      - name: Download verified Tauri platform packages
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          run_id=""
+          for attempt in $(seq 1 90); do
+            runs=$(gh run list --repo "$GITHUB_REPOSITORY" \
+              --workflow tauri.yml \
+              --commit "$GITHUB_SHA" --limit 20 \
+              --json databaseId,event,headBranch,headSha)
+            run_id=$(jq -r --arg sha "$GITHUB_SHA" --arg tag "$GITHUB_REF_NAME" \
+              'map(select(.event == "push" and .headBranch == $tag and .headSha == $sha))[0].databaseId // empty' \
+              <<< "$runs")
+            if [[ -n "$run_id" ]]; then break; fi
+            sleep 10
+          done
+          test -n "$run_id"
+          gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --exit-status
+          gh run download "$run_id" --repo "$GITHUB_REPOSITORY" --dir dist/tauri-artifacts
+          mkdir -p dist/desktop
+          while IFS= read -r -d '' asset; do
+            relative_path=${asset#dist/tauri-artifacts/}
+            artifact_name=${relative_path%%/*}
+            cp "$asset" "dist/desktop/${artifact_name}-$(basename "$asset")"
+          done < <(find dist/tauri-artifacts -type f \
+            \( -name '*.deb' -o -name '*.pkg.tar.zst' -o -name '*.exe' -o -name '*.dmg' \) \
+            -print0)
+          rm -rf dist/tauri-artifacts
+          test -n "$(find dist/desktop -maxdepth 1 -name '*.deb' -print -quit)"
+          test -n "$(find dist/desktop -maxdepth 1 -name '*.pkg.tar.zst' -print -quit)"
+          test -n "$(find dist/desktop -maxdepth 1 -name '*.exe' -print -quit)"
+          test "$(find dist/desktop -maxdepth 1 -name '*.dmg' | wc -l)" -ge 2
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -154,8 +102,8 @@ jobs:
           python -m build
           python -m twine check dist/*.whl dist/*.tar.gz
       - name: Verify version and release contents
-        run: python scripts/verify_release.py --tag "${{ github.ref_name }}" --dist dist
+        run: python scripts/verify_release.py --tag "${{ github.ref_name }}" --dist dist --require-desktop-assets
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "${{ github.ref_name }}" dist/*.whl dist/*.tar.gz dist/SHA256SUMS.txt dist/windows/* dist/tauri-linux/* dist/tauri-arch/* --verify-tag --title "musren ${{ github.ref_name }}" --notes-file docs/changelog.md
+        run: gh release create "${{ github.ref_name }}" dist/*.whl dist/*.tar.gz dist/SHA256SUMS.txt dist/windows/* dist/desktop/* --verify-tag --title "musren ${{ github.ref_name }}" --notes-file docs/changelog.md

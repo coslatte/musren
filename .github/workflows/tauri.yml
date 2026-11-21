@@ -115,6 +115,8 @@ jobs:
         run: python scripts/smoke_credentials.py
       - name: Build desktop packages
         working-directory: desktop
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ runner.os == 'macOS' && '-' || '' }}
         run: bun run tauri build --bundles ${{ matrix.bundles }}
       - name: Install and launch the Windows installer
         if: runner.os == 'Windows'
@@ -156,6 +158,7 @@ jobs:
           cp -R "$mount"/*.app "$app"
           hdiutil detach "$mount"
           executable=$(find "$app/Contents/MacOS" -maxdepth 1 -type f -perm -u+x -print -quit)
+          codesign --verify --deep --strict "$app"
           "$executable" >/dev/null 2>&1 &
           app_pid=$!
           sleep 15

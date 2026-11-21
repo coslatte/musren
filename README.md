@@ -35,29 +35,31 @@ Download the package for your platform from the
 [latest release](https://github.com/coslatte/musren/releases/latest). Release
 packages and checksums are listed on the
 [releases page](https://github.com/coslatte/musren/releases).
+After downloading all files into one directory, verify them with
+`sha256sum -c SHA256SUMS.txt` before installing.
 
 ### Windows
 
-- **Desktop app**: run the signed NSIS installer (Windows 10 or newer).
+- **Desktop app**: run the NSIS installer (Windows 10 or newer). The installer
+  is currently unsigned, so SmartScreen may show an unknown-publisher prompt.
 - **Portable TUI and CLI**: download
   [`musren-windows-x64.exe`](https://github.com/coslatte/musren/releases/latest/download/musren-windows-x64.exe)
   and double-click it. Python and the optional Python dependencies are bundled;
   no installer is required.
 
-CI artifacts without a signature are for validation only. Use the signed files
-attached to a release.
-
 ### macOS
 
 Download the DMG for Apple Silicon or Intel (macOS 11 or newer), open it, and
-drag musren into Applications.
+drag musren into Applications. The app uses an ad-hoc signature but is not
+notarized; on first launch, control-click the app, choose **Open**, then approve
+it in the security prompt.
 
 ### Debian and Ubuntu
 
 Download the `.deb` package from the [latest release](https://github.com/coslatte/musren/releases/latest), then install it with:
 
 ```shell
-sudo apt install ./musren_*_amd64.deb
+sudo apt install ./*amd64.deb
 ```
 
 The package installs the Tauri desktop app and declares its runtime dependencies

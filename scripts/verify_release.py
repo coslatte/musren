@@ -9,7 +9,27 @@ from email.parser import Parser
 from pathlib import Path
 
 
-def verify(dist: Path, tag: str) -> None:
+def write_checksums(dist: Path) -> int:
+    """Write checksums for every release asset under the distribution directory."""
+    checksum_file = dist / "SHA256SUMS.txt"
+    release_files = sorted(
+        path
+        for path in dist.rglob("*")
+        if path.is_file() and path != checksum_file and not path.name.startswith(".")
+    )
+    basenames = [path.name for path in release_files]
+    assert len(basenames) == len(set(basenames)), (
+        "Release asset filenames must be unique"
+    )
+    lines = [
+        f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n"
+        for path in release_files
+    ]
+    checksum_file.write_text("".join(lines), encoding="utf-8")
+    return len(release_files)
+
+
+def verify(dist: Path, tag: str, require_desktop_assets: bool = False) -> None:
     """Validate the actual wheel and source archive, then write checksums."""
     version = tag[1:] if tag.startswith("v") else tag
     wheel = dist / f"musren-{version}-py3-none-any.whl"
@@ -55,17 +75,25 @@ def verify(dist: Path, tag: str) -> None:
         assert not any(Path(name).name == ".env" for name in names), (
             "Environment file included"
         )
-    lines = [
-        f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n"
-        for path in (wheel, source)
-    ]
-    (dist / "SHA256SUMS.txt").write_text("".join(lines), encoding="utf-8")
-    print(f"Verified musren {version}: wheel, source archive, launchers and checksums")
+    if require_desktop_assets:
+        desktop = dist / "desktop"
+        required_assets = {
+            "Windows NSIS installer": "musren-windows-latest-nsis-*.exe",
+            "Debian package": "musren-ubuntu-22.04-deb-*.deb",
+            "Arch package": "musren-arch-x86_64-pacman-*.pkg.tar.zst",
+            "macOS Apple Silicon DMG": "musren-macos-15-dmg-*.dmg",
+            "macOS Intel DMG": "musren-macos-15-intel-dmg-*.dmg",
+        }
+        for description, pattern in required_assets.items():
+            assert any(desktop.glob(pattern)), f"Missing {description} ({pattern})"
+    asset_count = write_checksums(dist)
+    print(f"Verified musren {version}: {asset_count} assets and checksums")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dist", type=Path, default=Path("dist"))
     parser.add_argument("--tag", required=True)
+    parser.add_argument("--require-desktop-assets", action="store_true")
     arguments = parser.parse_args()
-    verify(arguments.dist, arguments.tag)
+    verify(arguments.dist, arguments.tag, arguments.require_desktop_assets)

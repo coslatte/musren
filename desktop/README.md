@@ -4,15 +4,17 @@ This is the React + TypeScript desktop shell for musren, built with Tauri and Vi
 
 ## Install
 
-Use the signed packages attached to a GitHub release on Windows or macOS. The
-current CI artifacts are for validation and are not signed for public distribution.
+Installers for Windows and macOS are attached to each GitHub release. They have
+not been signed by a commercial developer identity yet.
 
-- **Windows 10+:** download and run the signed NSIS installer.
+- **Windows 10+:** download and run the NSIS installer. SmartScreen may show an
+  unknown-publisher prompt because the installer is unsigned.
 - **macOS 11+:** download the DMG for Apple Silicon or Intel, open it, and drag
-  musren to Applications. Open it normally after notarization.
+  musren to Applications. The app is ad-hoc signed but not notarized. On first
+  launch, control-click it, choose **Open**, and approve the security prompt.
 - **Debian 12 / Ubuntu 22.04+ x86_64:** download the `.deb` from the
   [latest release](https://github.com/coslatte/musren/releases/latest) and run
-  `sudo apt install ./musren_*_amd64.deb` from its download directory. APT
+  `sudo apt install ./*amd64.deb` from its download directory. APT
   installs the required system libraries automatically.
 - **Arch Linux x86_64:** download the package from the
   [latest release](https://github.com/coslatte/musren/releases/latest) and run
@@ -75,9 +77,7 @@ an API key. Shazam recognition requires the `shazam` extra; lyrics require the
 credential storage requires a working Secret Service or KWallet session;
 the Tauri CI checks Windows Credential Locker and macOS Keychain on their native
 systems using a disposable random credential. The first history release records
-cover-art presence but does not copy artwork images. Desktop packages are not
-release-ready until native install, credential-store, and signing/notarization
-checks pass on Windows and macOS.
+cover-art presence but does not copy artwork images.
 
 ## Recommended IDE Setup
 
