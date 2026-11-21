@@ -52,6 +52,17 @@ attached to a release.
 Download the DMG for Apple Silicon or Intel (macOS 11 or newer), open it, and
 drag musren into Applications.
 
+### Debian and Ubuntu
+
+Download the `.deb` package from the [latest release](https://github.com/coslatte/musren/releases/latest), then install it with:
+
+```shell
+sudo apt install ./musren_*_amd64.deb
+```
+
+The package installs the Tauri desktop app and declares its runtime dependencies
+for APT. Ubuntu 22.04 and Debian 12 are the supported build baselines.
+
 ### Arch Linux
 
 The AUR package `musren-desktop-git` is prepared but not published yet. Until it

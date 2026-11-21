@@ -46,8 +46,52 @@ jobs:
           name: windows-portable
           path: dist/windows/*
 
+  tauri-linux:
+    needs: validate
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Linux Tauri system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl file libayatana-appindicator3-dev libssl-dev libwebkit2gtk-4.1-dev librsvg2-dev libxdo-dev wget xvfb dbus-x11
+      - name: Install Python worker dependencies
+        run: python -m pip install -e '.[desktop]'
+      - name: Install frontend dependencies
+        working-directory: desktop
+        run: bun install --frozen-lockfile
+      - name: Build Debian package
+        working-directory: desktop
+        run: bun run tauri build --bundles deb
+      - name: Install and launch Debian package
+        shell: bash
+        run: |
+          set -euo pipefail
+          deb=$(find desktop/src-tauri/target/release/bundle/deb -maxdepth 1 -name '*.deb' -print -quit)
+          test -n "$deb"
+          sudo apt-get install -y "$deb"
+          set +e
+          timeout 15s xvfb-run -a dbus-run-session -- musren-desktop
+          result=$?
+          set -e
+          test "$result" -eq 124
+          mkdir -p dist/tauri-linux
+          cp "$deb" dist/tauri-linux/
+          sudo apt-get remove -y musren
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tauri-linux-deb
+          path: dist/tauri-linux/*.deb
+
   publish:
-    needs: [validate, windows]
+    needs: [validate, windows, tauri-linux]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
@@ -58,6 +102,10 @@ jobs:
         with:
           name: windows-portable
           path: dist/windows
+      - uses: actions/download-artifact@v4
+        with:
+          name: tauri-linux-deb
+          path: dist/tauri-linux
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -71,4 +119,4 @@ jobs:
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "${{ github.ref_name }}" dist/*.whl dist/*.tar.gz dist/SHA256SUMS.txt dist/windows/* --verify-tag --title "musren ${{ github.ref_name }}" --notes-file docs/changelog.md
+        run: gh release create "${{ github.ref_name }}" dist/*.whl dist/*.tar.gz dist/SHA256SUMS.txt dist/windows/* dist/tauri-linux/* --verify-tag --title "musren ${{ github.ref_name }}" --notes-file docs/changelog.md
